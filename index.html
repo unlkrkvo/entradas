@@ -2,838 +2,232 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="theme-color" content="#1F3864">
-<title>Entradas del concurso</title>
-<style>
-  :root {
-    --azul: #1F3864; --azul-claro: #E8EDF6; --texto: #1B1F27; --gris: #5E6573; --borde: #D5DAE3;
-    --fondo: #F4F6FA; --blanco: #FFFFFF; --verde: #137B3B; --verde-claro: #E3F4E9;
-    --rojo: #B3261E; --rojo-claro: #FBE7E5; --ambar: #8A5A00; --ambar-claro: #FFF3D6;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    background: var(--fondo); color: var(--texto); font-size: 18px; line-height: 1.45; }
-  header { background: var(--azul); color: #fff; padding: 14px 16px; display: flex; align-items: center;
-    justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 5; }
-  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
-  header small { display: block; font-size: 13px; opacity: .8; font-weight: 400; }
-  header button { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
-    border-radius: 8px; padding: 8px 12px; font-size: 15px; }
-  main { max-width: 560px; margin: 0 auto; padding: 16px; }
-  .vista { display: none; }
-  .vista.activa { display: block; }
-  h2 { font-size: 22px; margin: 4px 0 14px; }
-  .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-  label { display: block; font-weight: 600; margin: 12px 0 6px; font-size: 16px; }
-  input, select, textarea { width: 100%; font-size: 19px; padding: 13px 12px; border: 1.5px solid var(--borde);
-    border-radius: 10px; background: #fff; color: var(--texto); }
-  input:focus, select:focus { outline: 3px solid #9DB3DA; border-color: var(--azul); }
-  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 16px; font-size: 19px;
-    font-weight: 600; background: var(--azul); color: #fff; margin-top: 16px; cursor: pointer; text-align: center; text-decoration: none; }
-  .btn.sec { background: var(--azul-claro); color: var(--azul); }
-  .btn.verde { background: var(--verde); }
-  .btn.rojo { background: var(--rojo); }
-  .btn:disabled { opacity: .55; }
-  .menu { display: grid; gap: 12px; }
-  .menu button { text-align: left; padding: 18px 16px; border-radius: 14px; border: 1px solid var(--borde);
-    background: #fff; font-size: 19px; font-weight: 600; color: var(--azul); }
-  .menu button span { display: block; font-size: 15px; font-weight: 400; color: var(--gris); margin-top: 2px; }
-  .error { color: var(--rojo); font-size: 15px; margin-top: 8px; min-height: 1em; }
-  .nota { color: var(--gris); font-size: 15px; }
-  .fila { display: flex; gap: 10px; }
-  .fila > * { flex: 1; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chips button { border: 1.5px solid var(--borde); background: #fff; border-radius: 999px; padding: 10px 16px; font-size: 17px; }
-  .chips button.sel { background: var(--azul); color: #fff; border-color: var(--azul); }
-  #lector { width: 100%; border-radius: 14px; overflow: hidden; background: #000; min-height: 260px; }
-  .resultado { border-radius: 16px; padding: 20px 18px; margin-top: 14px; border: 2px solid; }
-  .resultado.ok { background: var(--verde-claro); border-color: var(--verde); color: #0B4A23; }
-  .resultado.mal { background: var(--rojo-claro); border-color: var(--rojo); color: #6E140F; }
-  .resultado.aviso { background: var(--ambar-claro); border-color: var(--ambar); color: #4F3300; }
-  .resultado .grande { font-size: 34px; font-weight: 800; letter-spacing: .5px; }
-  .dato { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.08); font-size: 17px; }
-  .dato b { text-align: right; }
-  .item { padding: 12px 0; border-bottom: 1px solid var(--borde); }
-  .item:last-child { border-bottom: 0; }
-  .estado { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 14px; font-weight: 600; }
-  .e-Generada { background: #ECEEF2; color: #3B4250; }
-  .e-Entregada { background: var(--azul-claro); color: var(--azul); }
-  .e-Usada { background: var(--verde-claro); color: var(--verde); }
-  .e-Anulada { background: var(--rojo-claro); color: var(--rojo); }
-  .ticket { background: #fff; border-radius: 18px; border: 1px solid var(--borde); overflow: hidden; text-align: center; }
-  .ticket .cab { background: var(--azul); color: #fff; padding: 18px; }
-  .ticket .cab div { font-size: 22px; font-weight: 700; }
-  .disenio { text-align: center; }
-  .disenio img { width: 100%; max-width: 420px; border-radius: 12px; display: block; margin: 0 auto; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
-  .codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 22px; letter-spacing: 3px; font-weight: 700; }
-  .cargando { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center;
-    justify-content: center; z-index: 20; color: #fff; font-size: 20px; font-weight: 600; }
-  .cargando.si { display: flex; }
-  .oculto { display: none !important; }
-  textarea { min-height: 160px; font-size: 15px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#140E1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Inka Fashion Perú · Entradas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css?v=2">
 </head>
 <body>
+<div class="fondo" aria-hidden="true"><div class="patron"></div></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="oroAnillo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBE7B0"/><stop offset="1" stop-color="#C08B34"/></linearGradient></defs>
+</svg>
 
-<header id="cabecera">
-  <h1 id="tituloApp">Entradas<small id="quien"></small></h1>
-  <button id="btnSalir" class="oculto" onclick="salir()">Salir</button>
+<header class="isla">
+  <div class="isla-cuerpo vidrio">
+    <a class="marca" href="./" aria-label="Inicio">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="marca-texto">Inka Fashion Perú<small id="subtituloMarca">Control de entradas</small></span>
+    </a>
+    <button class="avatar oculto" id="avatar" aria-label="Mi cuenta" aria-expanded="false" onclick="alternarMenu()"></button>
+  </div>
+  <div class="menu-usuario vidrio oculto" id="menuUsuario">
+    <p><b id="menuNombre"></b><span id="menuRol"></span></p>
+    <button class="btn btn-vidrio" style="margin-top:0" onclick="salir()">Cerrar sesión</button>
+  </div>
 </header>
 
 <main>
 
-  <!-- Ticket público -->
-  <section id="v-ticket" class="vista">
-    <div class="error" id="tError"></div>
-    <div id="tDiseno" class="disenio"><p class="nota">Preparando tu entrada...</p></div>
+  <!-- Entrada pública del comprador -->
+  <section id="v-ticket" class="vista" aria-labelledby="tTitulo">
+    <h1 id="tTitulo" class="sr">Tu entrada</h1>
+    <div id="tDiseno" class="disenio"><div class="esperando">Preparando tu entrada...</div></div>
+    <div class="error" id="tError" style="text-align:center"></div>
     <div id="tBotones" class="oculto">
-      <button class="btn verde" onclick="compartirEntrada()">Compartir / guardar</button>
-      <div class="fila">
-        <button class="btn sec" onclick="descargarPNG()">Descargar PNG</button>
-        <button class="btn sec" onclick="descargarPDF()">Descargar PDF</button>
+      <button class="btn btn-oro" onclick="compartirEntrada()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Guardar o compartir</button>
+      <div class="fila-btn">
+        <button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button>
+        <button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button>
       </div>
     </div>
-    <div class="tarjeta" style="margin-top:14px">
-      <div class="dato"><span>A nombre de</span><b id="tNombre"></b></div>
-      <div class="dato"><span>Documento</span><b id="tDoc"></b></div>
-      <div class="dato"><span>Vendida por</span><b id="tVend"></b></div>
-      <div class="dato"><span>Estado</span><b id="tEstado"></b></div>
+    <div class="vidrio panel" style="margin-top:18px">
+      <div class="datos" style="background:transparent;padding:0">
+        <div class="dato"><span>A nombre de</span><b id="tNombre">...</b></div>
+        <div class="dato"><span>Documento</span><b id="tDoc">...</b></div>
+        <div class="dato"><span>Vendida por</span><b id="tVend">...</b></div>
+        <div class="dato"><span>Estado</span><b id="tEstado">...</b></div>
+      </div>
     </div>
-    <p class="nota">Muestra el QR en la puerta. Guarda la imagen para tenerla sin internet. Un QR sirve para un solo ingreso.</p>
+    <p class="nota" style="text-align:center">Muestra el QR en la puerta. Guarda la imagen para tenerla sin internet. Cada QR sirve para un solo ingreso.</p>
   </section>
 
   <!-- Ingreso del personal -->
   <section id="v-login" class="vista">
-    <h2>Ingreso del personal</h2>
-    <div class="tarjeta">
-      <label for="clave">Tu clave personal</label>
-      <input id="clave" type="password" inputmode="numeric" autocomplete="off" placeholder="6 números">
-      <button class="btn" onclick="entrar()">Entrar</button>
-      <div class="error" id="loginError"></div>
+    <div class="portada">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <h1>Inka Fashion Perú</h1>
+      <p>Entradas del Concurso Internacional de Moda Peruana</p>
     </div>
-    <p class="nota">Si eres comprador, abre el enlace de tu entrada que te enviaron por WhatsApp.</p>
+    <div class="vidrio panel">
+      <label for="clave" style="text-align:center">Tu clave personal</label>
+      <div class="clave"><input id="clave" type="password" autocomplete="off" inputmode="numeric" placeholder="••••••"></div>
+      <button class="btn btn-oro" onclick="entrar()">Entrar</button>
+      <div class="error" id="loginError" style="text-align:center"></div>
+    </div>
+    <p class="nota" style="text-align:center">¿Compraste una entrada? Ábrela desde el enlace o la imagen que te enviaron por WhatsApp.</p>
   </section>
 
-  <!-- Menú -->
-  <section id="v-menu" class="vista">
-    <h2>¿Qué vas a hacer?</h2>
-    <div class="menu" id="menuOpciones"></div>
+  <!-- Inicio -->
+  <section id="v-inicio" class="vista">
+    <h1 id="saludo"></h1>
+    <p class="sub" id="saludoRol"></p>
+    <div class="cifras oculto" id="cifrasInicio"></div>
+    <div class="mosaico" id="mosaico"></div>
   </section>
 
   <!-- Escanear -->
   <section id="v-escanear" class="vista">
     <h2>Escanear entradas</h2>
-    <div id="lector"></div>
-    <div id="panelResultado"></div>
-    <button class="btn verde oculto" id="btnSiguiente" onclick="siguienteEscaneo()">Escanear siguiente</button>
-    <details class="tarjeta" style="margin-top:14px">
-      <summary>Escribir el código a mano</summary>
-      <label for="codigoManual">Código de 10 letras/números</label>
-      <input id="codigoManual" autocapitalize="characters" maxlength="10">
-      <button class="btn sec" onclick="validarManual()">Validar</button>
-    </details>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+    <div class="visor">
+      <div id="lector"></div>
+      <div class="esquinas" aria-hidden="true"></div>
+      <div class="aviso-camara oculto" id="avisoCamara"></div>
+    </div>
+    <div class="manual">
+      <input id="codigoManual" type="text" maxlength="10" autocapitalize="characters" autocomplete="off" placeholder="Código a mano" aria-label="Escribir el código a mano">
+      <button onclick="validarManual()">Validar</button>
+    </div>
+    <p class="nota">Apunta la cámara al QR. El resultado aparece abajo y la cámara sigue lista para el siguiente.</p>
   </section>
 
-  <!-- Registrar venta -->
+  <!-- Registrar -->
   <section id="v-registrar" class="vista">
-    <h2 id="tituloRegistro">Registrar entrada</h2>
-    <div class="tarjeta">
-      <label>¿Quién vendió?</label>
-      <select id="rVendedor" onchange="cambioVendedor()"></select>
+    <h2>Registrar entrada</h2>
+    <div class="vidrio panel">
+      <span class="etiqueta" style="margin-top:0">¿Quién vendió la entrada?</span>
+      <div id="rVendedor"></div>
       <div id="bloqueQR" class="oculto">
-        <label for="rQR">¿Qué entrada de su lista?</label>
-        <select id="rQR"></select>
-        <p class="nota">El concursante debe decirte el número de entrada que le dio al comprador.</p>
+        <span class="etiqueta">¿Cuál de sus entradas entregó?</span>
+        <input type="search" id="rFiltroQR" placeholder="Busca por número o código" autocomplete="off" oninput="pintarFichas()">
+        <div class="rejilla" id="rFichas"></div>
+        <div class="leyenda"><span><i style="background:rgba(255,255,255,.25)"></i>Disponible</span><span><i style="background:var(--jade)"></i>Ya registrada</span><span><i style="background:var(--ambar)"></i>Ya ingresó</span></div>
       </div>
+    </div>
+    <div class="vidrio panel oculto" id="rDatos">
+      <h3>Comprador</h3>
       <div id="bloqueComprador"></div>
+      <h3 style="margin-top:22px">Pago</h3>
       <div id="bloquePago"></div>
-      <button class="btn" id="btnRegistrar" onclick="registrar()">Registrar</button>
+      <button class="btn btn-oro" id="btnRegistrar" onclick="registrar()">Registrar entrada</button>
       <div class="error" id="rError"></div>
     </div>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
   </section>
 
   <!-- Caja -->
   <section id="v-caja" class="vista">
     <h2>Venta en puerta</h2>
-    <div class="tarjeta">
-      <p class="nota" id="cPrecio"></p>
+    <div class="vidrio panel">
+      <h3>Comprador</h3>
       <div id="bloqueCompradorCaja"></div>
+      <h3 style="margin-top:22px">Pago</h3>
       <div id="bloquePagoCaja"></div>
-      <label style="display:flex;gap:10px;align-items:center;font-weight:600">
-        <input type="checkbox" id="cIngresa" checked style="width:26px;height:26px"> Ingresa ahora mismo
-      </label>
-      <p class="nota">Si está marcado, la entrada queda usada y la persona pasa directo con su sello.</p>
-      <button class="btn" id="btnCaja" onclick="venderCaja()">Cobrar y registrar</button>
+      <label class="interruptor"><span>Entra ahora mismo<small>La entrada queda usada y pasa directo con su sello</small></span><input type="checkbox" id="cIngresa" checked></label>
+      <button class="btn btn-oro" id="btnCaja" onclick="venderCaja()">Cobrar y registrar</button>
       <div class="error" id="cError"></div>
     </div>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
   </section>
 
-  <!-- Resultado de una venta -->
+  <!-- Venta completada -->
   <section id="v-hecho" class="vista">
-    <div class="resultado ok"><div class="grande">Registrado</div><div id="hTexto"></div></div>
-    <div id="hDiseno" class="disenio" style="margin-top:14px"></div>
-    <div class="codigo" id="hCodigo" style="text-align:center;margin-top:8px"></div>
-    <button class="btn verde" onclick="compartirEntrada()">Compartir imagen (WhatsApp)</button>
-    <div class="fila">
-      <button class="btn sec" onclick="descargarPNG()">Descargar PNG</button>
-      <button class="btn sec" onclick="descargarPDF()">Descargar PDF</button>
+    <div class="veredicto"><div class="sello" style="background:rgba(63,211,155,.22)"><svg viewBox="0 0 24 24" fill="none" stroke="#3FD39B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 style="color:var(--marfil)">Entrada registrada</h2><p id="hTexto"></p></div></div>
+    <div id="hDiseno" class="disenio"></div>
+    <div class="codigo" id="hCodigo"></div>
+    <button class="btn btn-oro" onclick="compartirEntrada()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Enviar imagen por WhatsApp</button>
+    <div class="fila-btn">
+      <button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button>
+      <button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button>
     </div>
-    <a class="btn sec" id="hWhats" target="_blank" rel="noopener">Enviar enlace por WhatsApp</a>
-    <button class="btn" id="hOtra">Registrar otra</button>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+    <a class="btn btn-vidrio" id="hWhats" target="_blank" rel="noopener">Enviar el enlace por WhatsApp</a>
+    <button class="btn btn-vidrio" id="hOtra">Registrar otra</button>
   </section>
 
   <!-- Buscar -->
   <section id="v-buscar" class="vista">
     <h2>Buscar entradas</h2>
-    <div class="tarjeta">
-      <label for="bQ">DNI, código QR, celular o nombre</label>
-      <input id="bQ" autocomplete="off">
-      <button class="btn" onclick="buscar()">Buscar</button>
-      <div class="error" id="bError"></div>
-    </div>
-    <div class="tarjeta" id="bResultados"></div>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+    <input type="search" id="bQ" placeholder="DNI, código, celular o nombre" autocomplete="off" oninput="buscarEnVivo()">
+    <p class="nota" id="bEstado">Escribe al menos 3 caracteres.</p>
+    <div class="vidrio panel oculto" id="bPanel" style="margin-top:14px"><ul class="lista" id="bResultados"></ul></div>
   </section>
 
-  <!-- Listas para concursantes -->
+  <!-- Listas de concursantes -->
   <section id="v-listas" class="vista">
-    <h2>Lista de un concursante</h2>
-    <div class="tarjeta">
-      <label for="lConc">Concursante</label>
-      <select id="lConc"></select>
-      <button class="btn" onclick="armarLista()">Preparar sus entradas</button>
-      <div class="error" id="lError"></div>
+    <h2>Entradas por concursante</h2>
+    <div class="vidrio panel">
+      <span class="etiqueta" style="margin-top:0">Concursante</span>
+      <div id="lConc"></div>
     </div>
-    <div class="tarjeta oculto" id="lSalida">
-      <p class="nota" id="lCuenta"></p>
-      <button class="btn verde" onclick="lote('zip')">Descargar imágenes (ZIP)</button>
-      <button class="btn verde" onclick="lote('pdf')">Descargar todas en un PDF</button>
-      <p class="nota" id="lProgreso"></p>
-      <label for="lTexto">Mensaje con los códigos para WhatsApp</label>
-      <textarea id="lTexto" readonly></textarea>
-      <a class="btn sec" id="lWhats" target="_blank" rel="noopener">Abrir WhatsApp con el mensaje</a>
-      <button class="btn sec" onclick="copiar(document.getElementById('lTexto').value)">Copiar mensaje</button>
+    <div id="lSalida" class="oculto">
+      <div class="vidrio panel" id="lAvance"></div>
+      <div class="vidrio panel">
+        <h3>Sus entradas</h3>
+        <p class="nota" style="margin-top:-4px">Toca un número para ver o enviar esa entrada.</p>
+        <div class="rejilla" id="lFichas"></div>
+        <div class="fila-btn" style="margin-top:8px">
+          <button class="btn btn-oro" onclick="lote('zip')">Imágenes (ZIP)</button>
+          <button class="btn btn-oro" onclick="lote('pdf')">Todas en PDF</button>
+        </div>
+        <p class="nota" id="lProgreso"></p>
+      </div>
+      <div class="vidrio panel">
+        <h3>Mensaje con los códigos</h3>
+        <textarea id="lTexto" readonly aria-label="Mensaje con los códigos"></textarea>
+        <div class="fila-btn">
+          <a class="btn btn-vidrio" id="lWhats" target="_blank" rel="noopener">Abrir WhatsApp</a>
+          <button class="btn btn-vidrio" onclick="copiar(document.getElementById('lTexto').value)">Copiar</button>
+        </div>
+      </div>
+      <div class="vidrio panel oculto" id="lGenerar">
+        <h3>Reponer entradas perdidas</h3>
+        <p class="nota" style="margin-top:-4px">Primero anula las perdidas desde Buscar. Luego genera las nuevas aquí.</p>
+        <div class="manual"><input id="gCant" type="number" min="1" max="50" value="1" aria-label="Cantidad"><button onclick="generar()">Generar</button></div>
+      </div>
     </div>
-    <div class="tarjeta oculto" id="lGenerar">
-      <label for="gCant">Reponer QR perdidos (genera nuevos)</label>
-      <div class="fila"><input id="gCant" type="number" min="1" max="50" value="1"><button class="btn" style="margin-top:0" onclick="generar()">Generar</button></div>
-      <p class="nota">Primero anula los perdidos desde Buscar.</p>
+  </section>
+
+  <!-- Mis entradas (concursantes y caja) -->
+  <section id="v-mis" class="vista">
+    <h2 id="misTitulo">Mis entradas</h2>
+    <div class="vidrio panel" id="misAvance"></div>
+    <div class="segmentos" id="misFiltro" role="tablist" aria-label="Filtrar entradas">
+      <button class="sel" data-f="todas" onclick="filtrarMis(this)">Todas</button>
+      <button data-f="libres" onclick="filtrarMis(this)">Libres</button>
+      <button data-f="registradas" onclick="filtrarMis(this)">Registradas</button>
+      <button data-f="ingresaron" onclick="filtrarMis(this)">Ingresaron</button>
     </div>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+    <div class="vidrio panel" style="margin-top:14px"><ul class="lista" id="misLista"></ul></div>
+    <div class="fila-btn" id="misLote">
+      <button class="btn btn-vidrio" onclick="lote('zip', true)">Imágenes (ZIP)</button>
+      <button class="btn btn-vidrio" onclick="lote('pdf', true)">Todas en PDF</button>
+    </div>
+    <p class="nota" id="misProgreso"></p>
+    <button class="btn btn-vidrio" onclick="cargarMis()">Actualizar</button>
   </section>
 
   <!-- Resumen -->
   <section id="v-resumen" class="vista">
-    <h2>Resumen</h2>
-    <div class="tarjeta" id="resDatos"></div>
-    <button class="btn sec" onclick="abrir('resumen')">Actualizar</button>
-    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+    <h2>Resumen del evento</h2>
+    <div id="resDatos"></div>
+    <button class="btn btn-vidrio" onclick="verResumen()">Actualizar</button>
   </section>
 
 </main>
-<div class="cargando" id="cargando">Un momento...</div>
+
+<nav class="pestanas vidrio oculto" id="pestanas" aria-label="Secciones"></nav>
+<div class="velo" id="velo" onclick="cerrarHoja()"></div>
+<div class="hoja" id="hoja" role="dialog" aria-modal="true" aria-label="Detalle"><div class="asa"></div><div id="hojaContenido"></div></div>
+<div class="toast vidrio" id="toast" role="status"></div>
+<div class="cargando" id="cargando"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script>
-/* ====== CONFIGURACIÓN: pega aquí la dirección de tu servidor de Apps Script ====== */
-const API = 'https://script.google.com/macros/s/AKfycbzNQTpl4UMnX8DPNTzuEgMbdmjvNK06GRHC7STFHKR8fTZYtsqFBvA6y4d3yazzVVWc4w/exec';
-/* ================================================================================== */
-
-const APP_URL = location.origin + location.pathname;
-let sesion = null;      // { clave, nombre, rol, config }
-let vendedores = [];
-let lector = null, escaneando = false, ultimoCodigo = '', ultimoTiempo = 0, temporizador = null;
-
-const MENU = {
-  escanear: ['Escanear entradas', 'Controlar el ingreso en la puerta'],
-  registrar: ['Registrar venta o datos', 'Concursantes, organizadora o asistente'],
-  caja: ['Venta en puerta', 'Cobrar y dar ingreso el mismo día'],
-  buscar: ['Buscar entradas', 'Por DNI, código, celular o nombre'],
-  listas: ['Listas de concursantes', 'Enviar sus 20 entradas por WhatsApp'],
-  resumen: ['Resumen', 'Totales del evento y de caja']
-};
-const MENU_ROL = {
-  Administrador: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen'],
-  Registro: ['registrar', 'buscar', 'listas'],
-  Caja: ['caja', 'buscar'],
-  Puerta: ['escanear']
-};
-
-// ---------- Comunicación con el servidor ----------
-async function api(accion, datos = {}, silencioso = false) {
-  if (!silencioso) document.getElementById('cargando').classList.add('si');
-  try {
-    const cuerpo = Object.assign({ accion, clave: sesion ? sesion.clave : '' }, datos);
-    const r = await fetch(API, { method: 'POST', body: JSON.stringify(cuerpo) });
-    const j = await r.json();
-    if (j.sesion === false && sesion) { salir(); }
-    return j;
-  } catch (e) {
-    return { ok: false, error: 'Sin conexión. Revisa tu internet e intenta otra vez.' };
-  } finally {
-    document.getElementById('cargando').classList.remove('si');
-  }
-}
-
-// ---------- Navegación ----------
-function mostrar(id) {
-  document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
-  document.getElementById('v-' + id).classList.add('activa');
-  window.scrollTo(0, 0);
-}
-function volverMenu() { detenerLector(); mostrar('menu'); }
-
-function pintarMenu() {
-  const cont = document.getElementById('menuOpciones');
-  cont.innerHTML = '';
-  (MENU_ROL[sesion.rol] || []).forEach(k => {
-    const b = document.createElement('button');
-    b.innerHTML = MENU[k][0] + '<span>' + MENU[k][1] + '</span>';
-    b.onclick = () => abrir(k);
-    cont.appendChild(b);
-  });
-  document.getElementById('quien').textContent = sesion.nombre + ' · ' + sesion.rol;
-  document.getElementById('btnSalir').classList.remove('oculto');
-}
-
-async function abrir(k) {
-  if (k === 'escanear') { mostrar('escanear'); iniciarLector(); }
-  if (k === 'registrar') { await cargarVendedores(); prepararRegistro(); mostrar('registrar'); }
-  if (k === 'caja') { prepararCaja(); mostrar('caja'); }
-  if (k === 'buscar') { document.getElementById('bResultados').innerHTML = ''; mostrar('buscar'); }
-  if (k === 'listas') { await cargarVendedores(); prepararListas(); mostrar('listas'); }
-  if (k === 'resumen') { await verResumen(); mostrar('resumen'); }
-}
-
-// ---------- Sesión ----------
-async function entrar() {
-  const clave = document.getElementById('clave').value.trim();
-  const err = document.getElementById('loginError');
-  err.textContent = '';
-  if (!clave) { err.textContent = 'Escribe tu clave'; return; }
-  sesion = { clave };
-  const r = await api('login');
-  if (!r.ok) { sesion = null; err.textContent = r.error; return; }
-  sesion = { clave, nombre: r.nombre, rol: r.rol, config: r.config };
-  try { localStorage.setItem('clave', clave); } catch (e) {}
-  document.getElementById('clave').value = '';
-  pintarMenu();
-  mostrar('menu');
-}
-function salir() {
-  detenerLector();
-  sesion = null;
-  try { localStorage.removeItem('clave'); } catch (e) {}
-  document.getElementById('quien').textContent = '';
-  document.getElementById('btnSalir').classList.add('oculto');
-  mostrar('login');
-}
-
-// ---------- Formularios reutilizables ----------
-function htmlComprador(p) {
-  return `
-    <label for="${p}Nombre">Nombre completo del comprador</label>
-    <input id="${p}Nombre" autocomplete="off">
-    <label for="${p}TipoDoc">Tipo de documento</label>
-    <select id="${p}TipoDoc"><option>DNI</option><option>Carnet de extranjería</option><option>Pasaporte</option></select>
-    <label for="${p}Doc">Número de documento</label>
-    <input id="${p}Doc" autocomplete="off" inputmode="numeric">
-    <p class="nota">Si es menor de edad, puedes poner el DNI del adulto que lo acompaña.</p>
-    <label for="${p}Cel">Celular (WhatsApp)</label>
-    <input id="${p}Cel" type="tel" inputmode="numeric" maxlength="9" placeholder="9XXXXXXXX">`;
-}
-function htmlPago(p, monto, editable, conRegalo) {
-  const metodos = ['Efectivo', 'Yape', 'Plin', 'Transferencia'].concat(conRegalo ? ['Regalo (sin pago)'] : []);
-  return `
-    <label for="${p}Monto">Monto de la entrada (S/)</label>
-    <input id="${p}Monto" type="number" inputmode="decimal" min="0" step="0.5" value="${monto}" ${editable ? '' : 'readonly style="background:#EEF1F6"'}>
-    <label>Método de pago</label>
-    <div class="chips" id="${p}Metodos">
-      ${metodos.map(m => `<button type="button" data-m="${m}" onclick="elegirMetodo('${p}', this)">${m}</button>`).join('')}
-    </div>
-    <div id="${p}OperBloque" class="oculto">
-      <label for="${p}Oper">Código de operación (Yape / Plin / transferencia)</label>
-      <input id="${p}Oper" autocomplete="off" placeholder="Ej. 01234567">
-    </div>`;
-}
-function elegirMetodo(p, b) {
-  document.querySelectorAll('#' + p + 'Metodos button').forEach(x => x.classList.remove('sel'));
-  b.classList.add('sel');
-  const m = b.dataset.m;
-  document.getElementById(p + 'Metodos').dataset.valor = m;
-  document.getElementById(p + 'OperBloque').classList.toggle('oculto', m === 'Efectivo' || m === 'Regalo (sin pago)');
-  const monto = document.getElementById(p + 'Monto');
-  if (m === 'Regalo (sin pago)' && !monto.readOnly) monto.value = 0;
-}
-function leerComprador(p) {
-  return {
-    nombre: document.getElementById(p + 'Nombre').value,
-    tipoDoc: document.getElementById(p + 'TipoDoc').value,
-    doc: document.getElementById(p + 'Doc').value,
-    celular: document.getElementById(p + 'Cel').value
-  };
-}
-function leerPago(p) {
-  const op = document.getElementById(p + 'Oper');
-  const monto = document.getElementById(p + 'Monto');
-  return {
-    metodo: document.getElementById(p + 'Metodos').dataset.valor || '',
-    operacion: op ? op.value : '',
-    monto: monto ? monto.value : ''
-  };
-}
-function validarLocal(d, conPago) {
-  if ((d.nombre || '').trim().length < 3) return 'Escribe el nombre completo';
-  if (d.tipoDoc === 'DNI' && !/^\d{8}$/.test(d.doc.trim())) return 'El DNI debe tener 8 números';
-  if (!d.doc.trim()) return 'Escribe el número de documento';
-  if (!/^9\d{8}$/.test(d.celular.replace(/\D/g, ''))) return 'El celular debe tener 9 números y empezar con 9';
-  if (conPago && !d.metodo) return 'Elige el método de pago';
-  if (conPago && (d.monto === '' || isNaN(Number(d.monto)) || Number(d.monto) < 0)) return 'Escribe el monto';
-  if (conPago && ['Yape', 'Plin', 'Transferencia'].includes(d.metodo) && !d.operacion.trim()) return 'Escribe el código de operación';
-  return '';
-}
-function opId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-
-// ---------- Registrar ----------
-async function cargarVendedores() {
-  const r = await api('vendedores');
-  if (r.ok) { vendedores = r.vendedores; sesion.precio = r.precio; }
-}
-function prepararRegistro() {
-  const sel = document.getElementById('rVendedor');
-  sel.innerHTML = '<option value="">Elige...</option>' + vendedores.filter(v => v.codigo !== 'CAJA')
-    .map(v => `<option value="${esc(v.codigo)}">${esc(v.nombre)} (${esc(v.tipo)})</option>`).join('');
-  document.getElementById('bloqueComprador').innerHTML = htmlComprador('r');
-  document.getElementById('bloquePago').innerHTML = '';
-  document.getElementById('bloqueQR').classList.add('oculto');
-  document.getElementById('rError').textContent = '';
-  document.getElementById('btnRegistrar').dataset.op = opId();
-}
-async function cambioVendedor() {
-  const cod = document.getElementById('rVendedor').value;
-  const v = vendedores.find(x => x.codigo === cod);
-  const esConc = v && v.tipo === 'Concursante';
-  document.getElementById('bloqueQR').classList.toggle('oculto', !esConc);
-  document.getElementById('bloquePago').innerHTML = !v ? '' : esConc
-    ? '<p class="nota">Datos del pago que hizo el comprador al concursante.</p>' + htmlPago('r', sesion.precio, true, true)
-    : htmlPago('r', sesion.precio, false, false);
-  if (esConc) {
-    const r = await api('qrLibres', { codigo: cod });
-    const sel = document.getElementById('rQR');
-    sel.innerHTML = r.ok && r.qrs.length
-      ? '<option value="">Elige...</option>' + r.qrs.map(q => `<option value="${q.id}">Entrada N° ${q.n} (${q.id})${q.estado === 'Usada' ? ' - ya ingresó' : ''}</option>`).join('')
-      : '<option value="">No le quedan entradas sin datos</option>';
-  }
-}
-async function registrar() {
-  const err = document.getElementById('rError');
-  err.textContent = '';
-  const cod = document.getElementById('rVendedor').value;
-  const v = vendedores.find(x => x.codigo === cod);
-  if (!v) { err.textContent = 'Elige quién vendió'; return; }
-  const esConc = v.tipo === 'Concursante';
-  const d = Object.assign({ vendedor: cod }, leerComprador('r'), leerPago('r'));
-  if (esConc) {
-    d.id = document.getElementById('rQR').value;
-    if (!d.id) { err.textContent = 'Elige la entrada de la lista'; return; }
-  }
-  const e = validarLocal(d, true);
-  if (e) { err.textContent = e; return; }
-  const btn = document.getElementById('btnRegistrar');
-  d.opId = btn.dataset.op;
-  btn.disabled = true;
-  const r = await api('registrar', d);
-  btn.disabled = false;
-  if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, esConc ? 'Datos guardados en la entrada N° ' + r.numero + ' de ' + v.nombre : 'Venta registrada a nombre de ' + v.nombre, () => abrir('registrar'));
-}
-
-// ---------- Caja ----------
-function prepararCaja() {
-  document.getElementById('bloqueCompradorCaja').innerHTML = htmlComprador('c');
-  document.getElementById('bloquePagoCaja').innerHTML = htmlPago('c', sesion.config ? sesion.config.precioDia : 30, false, false);
-  document.getElementById('cPrecio').textContent = 'Precio en puerta: S/ ' + (sesion.config ? sesion.config.precioDia : '');
-  document.getElementById('cError').textContent = '';
-  document.getElementById('cIngresa').checked = true;
-  document.getElementById('btnCaja').dataset.op = opId();
-}
-async function venderCaja() {
-  const err = document.getElementById('cError');
-  err.textContent = '';
-  const d = Object.assign({}, leerComprador('c'), leerPago('c'));
-  const e = validarLocal(d, true);
-  if (e) { err.textContent = e; return; }
-  d.ingresaAhora = document.getElementById('cIngresa').checked;
-  const btn = document.getElementById('btnCaja');
-  d.opId = btn.dataset.op;
-  btn.disabled = true;
-  const r = await api('venderPuerta', d);
-  btn.disabled = false;
-  if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} (${d.metodo}). ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'));
-}
-
-// ---------- Pantalla de venta completada ----------
-function hecho(id, nombre, cel, texto, otra) {
-  document.getElementById('hTexto').textContent = texto;
-  document.getElementById('hCodigo').textContent = id;
-  document.getElementById('hDiseno').innerHTML = '<p class="nota">Preparando la entrada...</p>';
-  const link = APP_URL + '?t=' + id;
-  const msg = `Hola ${nombre.split(' ')[0]}, esta es tu entrada para ${sesion.config ? sesion.config.evento : 'el evento'}:\n${link}\nMuéstrala en la puerta. Un QR = un ingreso.`;
-  const a = document.getElementById('hWhats');
-  a.href = 'https://wa.me/51' + cel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
-  a.dataset.link = link;
-  document.getElementById('hOtra').onclick = otra;
-  mostrar('hecho');
-  mostrarDiseno('hDiseno', id);
-}
-
-// ---------- Escáner ----------
-function iniciarLector() {
-  document.getElementById('panelResultado').innerHTML = '';
-  document.getElementById('btnSiguiente').classList.add('oculto');
-  if (lector) { try { lector.resume(); } catch (e) {} escaneando = true; return; }
-  lector = new Html5Qrcode('lector');
-  lector.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, alLeer, () => {})
-    .then(() => { escaneando = true; })
-    .catch(() => {
-      document.getElementById('panelResultado').innerHTML =
-        '<div class="resultado aviso">No se pudo abrir la cámara. Revisa que hayas dado permiso al navegador, o escribe el código a mano abajo.</div>';
-    });
-}
-function detenerLector() {
-  clearTimeout(temporizador);
-  if (lector) { lector.stop().catch(() => {}).finally(() => { try { lector.clear(); } catch (e) {} lector = null; }); }
-  escaneando = false;
-}
-function alLeer(texto) {
-  if (!escaneando) return;
-  const ahora = Date.now();
-  if (texto === ultimoCodigo && ahora - ultimoTiempo < 4000) return;
-  ultimoCodigo = texto; ultimoTiempo = ahora;
-  escaneando = false;
-  try { lector.pause(true); } catch (e) {}
-  validar(texto);
-}
-function validarManual() {
-  const c = document.getElementById('codigoManual').value.trim().toUpperCase();
-  if (c.length !== 10) { document.getElementById('panelResultado').innerHTML = '<div class="resultado aviso">El código tiene 10 caracteres.</div>'; return; }
-  escaneando = false;
-  try { lector && lector.pause(true); } catch (e) {}
-  validar(c);
-  document.getElementById('codigoManual').value = '';
-}
-async function validar(codigo) {
-  const panel = document.getElementById('panelResultado');
-  panel.innerHTML = '<div class="resultado aviso"><div class="grande">Validando...</div></div>';
-  const r = await api('escanear', { id: codigo }, true);
-  if (!r.ok) {
-    panel.innerHTML = `<div class="resultado aviso"><div class="grande">Sin respuesta</div>${r.error}<br>Vuelve a escanear.</div>`;
-    sonido(false);
-  } else {
-    const filas = (pares) => pares.filter(p => p[1]).map(p => `<div class="dato"><span>${esc(p[0])}</span><b>${esc(p[1])}</b></div>`).join('');
-    const vend = r.vendedor ? r.vendedor + (r.tipoVendedor === 'Concursante' ? ' (concursante' + (r.nLista ? ', N° ' + r.nLista : '') + ')' : ' (organización)') : '';
-    const comunes = [['Comprador', r.comprador], [r.tipoDoc || 'Documento', r.doc], ['Vendió', vend], ['Registrada', r.fechaRegistro], ['Escaneada', r.horaEscaneo], ['Código', r.id]];
-    if (r.resultado === 'Válido') {
-      panel.innerHTML = `<div class="resultado ok"><div class="grande">PUEDE PASAR</div>${r.sinDatos ? '<div><b>Concursante sin datos del comprador.</b> Pide su DNI si es posible.</div>' : ''}${filas(comunes)}</div>`;
-      sonido(true);
-      temporizador = setTimeout(siguienteEscaneo, 3500);
-    } else if (r.resultado === 'Ya usado') {
-      panel.innerHTML = `<div class="resultado mal"><div class="grande">YA FUE USADA</div><div>Ingresó: <b>${r.horaIngreso}</b> (escaneó ${esc(r.escaneadoPor)})</div>${filas(comunes)}<p>Si tiene sello, es un reingreso. Si no, llama al supervisor.</p></div>`;
-      sonido(false);
-    } else if (r.resultado === 'Anulado') {
-      panel.innerHTML = `<div class="resultado mal"><div class="grande">ANULADA</div>${filas(comunes)}<p>${esc(r.obs)}</p><p>Deriva al supervisor.</p></div>`;
-      sonido(false);
-    } else {
-      panel.innerHTML = `<div class="resultado mal"><div class="grande">NO EXISTE</div><p>Este código no es del evento. Deriva al supervisor o a caja.</p>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}</div>`;
-      sonido(false);
-    }
-  }
-  document.getElementById('btnSiguiente').classList.remove('oculto');
-  panel.scrollIntoView({ behavior: 'smooth' });
-}
-function siguienteEscaneo() {
-  clearTimeout(temporizador);
-  document.getElementById('panelResultado').innerHTML = '';
-  document.getElementById('btnSiguiente').classList.add('oculto');
-  window.scrollTo(0, 0);
-  if (lector) { try { lector.resume(); } catch (e) {} }
-  escaneando = true;
-}
-function sonido(bien) {
-  try {
-    if (navigator.vibrate) navigator.vibrate(bien ? 120 : [250, 100, 250]);
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.frequency.value = bien ? 880 : 220; o.connect(g); g.connect(ctx.destination);
-    g.gain.value = 0.15; o.start(); o.stop(ctx.currentTime + (bien ? 0.15 : 0.5));
-  } catch (e) {}
-}
-
-// ---------- Buscar ----------
-async function buscar() {
-  const q = document.getElementById('bQ').value.trim();
-  const err = document.getElementById('bError');
-  err.textContent = '';
-  const r = await api('buscar', { q });
-  const cont = document.getElementById('bResultados');
-  if (!r.ok) { err.textContent = r.error; cont.innerHTML = ''; return; }
-  if (!r.resultados.length) { cont.innerHTML = '<p class="nota">Sin resultados.</p>'; return; }
-  const admin = sesion.rol === 'Administrador';
-  cont.innerHTML = `<p class="nota">${r.resultados.length} resultado(s)</p>` + r.resultados.map(x => `
-    <div class="item">
-      <div><b>${esc(x.comprador) || 'Sin datos del comprador'}</b> <span class="estado e-${x.estado}">${x.estado}</span></div>
-      <div class="nota">Doc: ${esc(x.doc) || '-'} · Cel: ${esc(x.celular) || '-'}</div>
-      <div class="nota">Vendió: ${esc(x.vendedor)}${x.nLista ? ' (N° ' + x.nLista + ')' : ''} · Código: ${x.id}</div>
-      ${x.horaIngreso ? `<div class="nota">Ingresó: ${x.horaIngreso}</div>` : ''}
-      <div class="fila">
-        <button class="btn sec" style="margin-top:8px;padding:10px" onclick="reenviar('${x.id}','${(x.comprador || '').replace(/'/g, '')}','${x.celular}')">Reenviar</button>
-        ${admin && x.estado !== 'Anulada' && x.estado !== 'Usada' ? `<button class="btn rojo" style="margin-top:8px;padding:10px" onclick="anular('${x.id}')">Anular</button>` : ''}
-      </div>
-    </div>`).join('');
-}
-function reenviar(id, nombre, cel) {
-  const link = APP_URL + '?t=' + id;
-  const msg = `Hola${nombre ? ' ' + nombre.split(' ')[0] : ''}, esta es tu entrada:\n${link}`;
-  window.open((cel ? 'https://wa.me/51' + cel : 'https://wa.me/') + '?text=' + encodeURIComponent(msg), '_blank');
-}
-async function anular(id) {
-  const motivo = prompt('¿Por qué se anula la entrada ' + id + '?');
-  if (!motivo) return;
-  if (!confirm('Anular ' + id + '. Esto no se puede deshacer. ¿Continuar?')) return;
-  const r = await api('anular', { id, motivo });
-  alert(r.ok ? 'Entrada anulada' : r.error);
-  buscar();
-}
-
-// ---------- Listas de concursantes ----------
-function prepararListas() {
-  const sel = document.getElementById('lConc');
-  sel.innerHTML = '<option value="">Elige...</option>' + vendedores.filter(v => v.tipo === 'Concursante')
-    .map(v => `<option value="${esc(v.codigo)}">${esc(v.nombre)}</option>`).join('');
-  document.getElementById('lSalida').classList.add('oculto');
-  document.getElementById('lGenerar').classList.toggle('oculto', sesion.rol !== 'Administrador');
-  document.getElementById('lError').textContent = '';
-}
-async function armarLista() {
-  const cod = document.getElementById('lConc').value;
-  const err = document.getElementById('lError');
-  err.textContent = '';
-  if (!cod) { err.textContent = 'Elige un concursante'; return; }
-  const r = await api('listaConcursante', { codigo: cod });
-  if (!r.ok) { err.textContent = r.error; return; }
-  const evento = sesion.config ? sesion.config.evento : 'el evento';
-  listaActual = { codigo: cod, nombre: r.nombre, qrs: r.qrs.sort((a, b) => Number(a.n) - Number(b.n)) };
-  let t = `Hola ${r.nombre.split(' ')[0]}, estas son tus códigos de entrada para ${evento}.\n` +
-    `Cuando entregues una, avísanos el número de entrada y los datos del comprador (nombre, DNI y celular).\n` +
-    `Cada código sirve para UNA sola persona.\n\n`;
-  listaActual.qrs.forEach(q => { t += `Entrada ${q.n}: ${q.id}\n`; });
-  document.getElementById('lTexto').value = t;
-  document.getElementById('lWhats').href = 'https://wa.me/?text=' + encodeURIComponent(t);
-  document.getElementById('lCuenta').textContent = listaActual.qrs.length + ' entradas activas de ' + r.nombre;
-  document.getElementById('lProgreso').textContent = '';
-  document.getElementById('lSalida').classList.remove('oculto');
-}
-async function lote(tipo) {
-  if (!listaActual || !listaActual.qrs.length) return;
-  const prog = document.getElementById('lProgreso');
-  const base = 'Entradas_' + listaActual.codigo + '_' + listaActual.nombre.replace(/\s+/g, '_');
-  try {
-    let zip = null, pdf = null;
-    if (tipo === 'zip') zip = new JSZip();
-    for (let i = 0; i < listaActual.qrs.length; i++) {
-      const q = listaActual.qrs[i];
-      prog.textContent = `Preparando entrada ${i + 1} de ${listaActual.qrs.length}...`;
-      const cv = await crearEntrada(q.id);
-      const nombre = 'Entrada_' + String(q.n).padStart(2, '0') + '_' + q.id;
-      if (zip) {
-        const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.9));
-        zip.file(nombre + '.jpg', blob);
-      } else {
-        if (!pdf) pdf = new jspdf.jsPDF({ unit: 'px', format: [cv.width, cv.height], hotfixes: ['px_scaling'] });
-        else pdf.addPage([cv.width, cv.height]);
-        pdf.addImage(cv.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, cv.width, cv.height);
-      }
-    }
-    prog.textContent = 'Guardando archivo...';
-    if (zip) bajar(await zip.generateAsync({ type: 'blob' }), base + '.zip');
-    else pdf.save(base + '.pdf');
-    prog.textContent = 'Listo. Revisa tus descargas.';
-  } catch (e) {
-    prog.textContent = 'No se pudo generar: ' + e.message;
-  }
-}
-async function generar() {
-  const cod = document.getElementById('lConc').value;
-  const cantidad = document.getElementById('gCant').value;
-  if (!cod) { document.getElementById('lError').textContent = 'Elige un concursante'; return; }
-  if (!confirm('Generar ' + cantidad + ' QR nuevos para este concursante?')) return;
-  const r = await api('generar', { codigo: cod, cantidad });
-  alert(r.ok ? 'Se generaron ' + r.generados + ' QR' : r.error);
-  if (r.ok) armarLista();
-}
-
-// ---------- Resumen ----------
-async function verResumen() {
-  const r = await api('resumen');
-  const c = document.getElementById('resDatos');
-  if (!r.ok) { c.innerHTML = '<p class="error">' + r.error + '</p>'; return; }
-  const s = r.resumen;
-  const fila = (a, b) => `<div class="dato"><span>${a}</span><b>${b}</b></div>`;
-  c.innerHTML = fila('Entradas en el sistema', s.total) + fila('Sin datos del comprador', s.generada) +
-    fila('Con datos, aún no ingresan', s.entregada) + fila('Ya ingresaron', s.usada) + fila('Anuladas', s.anulada) +
-    fila('Escaneos rechazados', s.rechazos) +
-    Object.keys(s.caja).map(m => fila('Caja · ' + m, s.caja[m])).join('') + fila('Total cobrado en caja', 'S/ ' + s.montoCaja) +
-    '<p class="nota">El detalle completo está en la hoja de Google.</p>';
-}
-
-// ---------- Utilidades ----------
-function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function dibujarQR(idCont, texto, tam) {
-  const c = document.getElementById(idCont);
-  c.innerHTML = '';
-  new QRCode(c, { text: texto, width: tam, height: tam, correctLevel: QRCode.CorrectLevel.M });
-}
-async function copiar(t) {
-  try { await navigator.clipboard.writeText(t); alert('Copiado'); }
-  catch (e) { prompt('Copia este texto:', t); }
-}
-function bajar(blob, nombre) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nombre;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
-// ---------- Diseño de la entrada ----------
-const PLANTILLA = 'entrada.jpg';
-const PLANTILLA_ANCHO = 941, PLANTILLA_ALTO = 1672;            // tamaño del diseño original
-const CAJA_QR = { x: 371, y: 1266, w: 199, h: 196 };          // recuadro claro donde va el QR
-let plantillaPromesa = null, entradaActual = null, listaActual = null;
-
-function cargarPlantilla() {
-  if (!plantillaPromesa) {
-    plantillaPromesa = new Promise((ok, mal) => {
-      const i = new Image();
-      i.onload = () => ok(i);
-      i.onerror = () => { plantillaPromesa = null; mal(new Error('No se encontró el diseño de la entrada')); };
-      i.src = PLANTILLA;
-    });
-  }
-  return plantillaPromesa;
-}
-function matrizQR(texto) {
-  const d = document.createElement('div');
-  const q = new QRCode(d, { text: texto, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.M });
-  const m = q._oQRCode, n = m.getModuleCount(), out = [];
-  for (let r = 0; r < n; r++) { const fila = []; for (let c = 0; c < n; c++) fila.push(m.isDark(r, c)); out.push(fila); }
-  return out;
-}
-async function crearEntrada(id) {
-  const img = await cargarPlantilla();
-  const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  const sx = cv.width / PLANTILLA_ANCHO, sy = cv.height / PLANTILLA_ALTO;
-  const B = { x: CAJA_QR.x * sx, y: CAJA_QR.y * sy, w: CAJA_QR.w * sx, h: CAJA_QR.h * sy };
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(B.x, B.y, B.w, B.h);
-  const m = matrizQR(id), n = m.length;
-  const cel = Math.floor(Math.min(B.w, B.h) * 0.8 / n);
-  const lado = cel * n;
-  const x0 = Math.round(B.x + (B.w - lado) / 2), y0 = Math.round(B.y + B.h * 0.05);
-  ctx.fillStyle = '#000000';
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c]) ctx.fillRect(x0 + c * cel, y0 + r * cel, cel, cel);
-  ctx.font = `bold ${Math.round(B.h * 0.085)}px ui-monospace, Menlo, Consolas, monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(id, B.x + B.w / 2, B.y + B.h * 0.94);
-  return cv;
-}
-async function mostrarDiseno(idCont, id) {
-  const cont = document.getElementById(idCont);
-  try {
-    const cv = await crearEntrada(id);
-    entradaActual = { id, cv };
-    cont.innerHTML = '';
-    const im = document.createElement('img');
-    im.alt = 'Entrada ' + id;
-    im.src = cv.toDataURL('image/jpeg', 0.9);
-    cont.appendChild(im);
-    return true;
-  } catch (e) {
-    cont.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
-    return false;
-  }
-}
-function pngActual() {
-  return new Promise(ok => entradaActual.cv.toBlob(ok, 'image/png'));
-}
-async function descargarPNG() {
-  if (!entradaActual) return;
-  bajar(await pngActual(), 'Entrada_' + entradaActual.id + '.png');
-}
-function descargarPDF() {
-  if (!entradaActual) return;
-  const cv = entradaActual.cv;
-  const pdf = new jspdf.jsPDF({ unit: 'px', format: [cv.width, cv.height], hotfixes: ['px_scaling'] });
-  pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, cv.width, cv.height);
-  pdf.save('Entrada_' + entradaActual.id + '.pdf');
-}
-async function compartirEntrada() {
-  if (!entradaActual) return;
-  const blob = await pngActual();
-  const archivo = new File([blob], 'Entrada_' + entradaActual.id + '.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-    try { await navigator.share({ files: [archivo], title: 'Entrada' }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
-  bajar(blob, archivo.name);
-}
-
-// ---------- Ticket público ----------
-async function verTicket(id) {
-  document.getElementById('tituloApp').firstChild.textContent = 'Tu entrada';
-  mostrar('ticket');
-  const r = await api('ticket', { id });
-  if (!r.ok || r.estado === 'Anulada') {
-    document.getElementById('tError').textContent = r.ok ? 'Esta entrada fue ANULADA. Comunícate con la organización.' : r.error;
-    document.getElementById('tDiseno').innerHTML = '';
-  } else if (await mostrarDiseno('tDiseno', id)) {
-    document.getElementById('tBotones').classList.remove('oculto');
-  }
-  if (!r.ok) return;
-  document.getElementById('tNombre').textContent = r.comprador || 'Pendiente de registro';
-  document.getElementById('tDoc').textContent = r.doc || '-';
-  document.getElementById('tVend').textContent = r.vendedor;
-  document.getElementById('tEstado').textContent = r.estado === 'Usada' ? 'Ya ingresó' : r.estado === 'Anulada' ? 'ANULADA' : 'Válida';
-}
-
-// ---------- Inicio ----------
-(async function inicio() {
-  const t = new URLSearchParams(location.search).get('t');
-  if (t) { verTicket(t.toUpperCase()); return; }
-  if (API.indexOf('PEGAR_AQUI') === 0) { mostrar('login'); document.getElementById('loginError').textContent = 'Falta configurar la dirección del servidor en el archivo.'; return; }
-  let guardada = null;
-  try { guardada = localStorage.getItem('clave'); } catch (e) {}
-  if (guardada) {
-    sesion = { clave: guardada };
-    const r = await api('login');
-    if (r.ok) { sesion = { clave: guardada, nombre: r.nombre, rol: r.rol, config: r.config }; pintarMenu(); mostrar('menu'); return; }
-    sesion = null;
-  }
-  mostrar('login');
-  document.getElementById('clave').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
-})();
-</script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
