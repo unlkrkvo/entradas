@@ -64,7 +64,8 @@
   .ticket { background: #fff; border-radius: 18px; border: 1px solid var(--borde); overflow: hidden; text-align: center; }
   .ticket .cab { background: var(--azul); color: #fff; padding: 18px; }
   .ticket .cab div { font-size: 22px; font-weight: 700; }
-  #qrTicket { display: inline-block; padding: 16px; background: #fff; margin: 18px auto 6px; }
+  .disenio { text-align: center; }
+  .disenio img { width: 100%; max-width: 420px; border-radius: 12px; display: block; margin: 0 auto; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
   .codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 22px; letter-spacing: 3px; font-weight: 700; }
   .cargando { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center;
     justify-content: center; z-index: 20; color: #fff; font-size: 20px; font-weight: 600; }
@@ -84,19 +85,22 @@
 
   <!-- Ticket público -->
   <section id="v-ticket" class="vista">
-    <div class="ticket">
-      <div class="cab"><small>Entrada</small><div id="tEvento">Cargando...</div></div>
-      <div id="qrTicket"></div>
-      <div class="codigo" id="tCodigo"></div>
-      <div class="tarjeta" style="margin:16px;text-align:left">
-        <div class="dato"><span>A nombre de</span><b id="tNombre"></b></div>
-        <div class="dato"><span>Documento</span><b id="tDoc"></b></div>
-        <div class="dato"><span>Vendida por</span><b id="tVend"></b></div>
-        <div class="dato"><span>Estado</span><b id="tEstado"></b></div>
-      </div>
-      <p class="nota" style="padding:0 16px 18px">Muestra este código en la puerta. Toma una captura de pantalla para tenerlo sin internet. Un QR solo sirve para un ingreso.</p>
-    </div>
     <div class="error" id="tError"></div>
+    <div id="tDiseno" class="disenio"><p class="nota">Preparando tu entrada...</p></div>
+    <div id="tBotones" class="oculto">
+      <button class="btn verde" onclick="compartirEntrada()">Compartir / guardar</button>
+      <div class="fila">
+        <button class="btn sec" onclick="descargarPNG()">Descargar PNG</button>
+        <button class="btn sec" onclick="descargarPDF()">Descargar PDF</button>
+      </div>
+    </div>
+    <div class="tarjeta" style="margin-top:14px">
+      <div class="dato"><span>A nombre de</span><b id="tNombre"></b></div>
+      <div class="dato"><span>Documento</span><b id="tDoc"></b></div>
+      <div class="dato"><span>Vendida por</span><b id="tVend"></b></div>
+      <div class="dato"><span>Estado</span><b id="tEstado"></b></div>
+    </div>
+    <p class="nota">Muestra el QR en la puerta. Guarda la imagen para tenerla sin internet. Un QR sirve para un solo ingreso.</p>
   </section>
 
   <!-- Ingreso del personal -->
@@ -171,12 +175,14 @@
   <!-- Resultado de una venta -->
   <section id="v-hecho" class="vista">
     <div class="resultado ok"><div class="grande">Registrado</div><div id="hTexto"></div></div>
-    <div class="ticket" style="margin-top:14px;padding-bottom:16px">
-      <div id="qrHecho" style="display:inline-block;padding:16px"></div>
-      <div class="codigo" id="hCodigo"></div>
+    <div id="hDiseno" class="disenio" style="margin-top:14px"></div>
+    <div class="codigo" id="hCodigo" style="text-align:center;margin-top:8px"></div>
+    <button class="btn verde" onclick="compartirEntrada()">Compartir imagen (WhatsApp)</button>
+    <div class="fila">
+      <button class="btn sec" onclick="descargarPNG()">Descargar PNG</button>
+      <button class="btn sec" onclick="descargarPDF()">Descargar PDF</button>
     </div>
-    <a class="btn verde" id="hWhats" target="_blank" rel="noopener">Enviar por WhatsApp</a>
-    <button class="btn sec" onclick="copiar(document.getElementById('hWhats').dataset.link)">Copiar enlace</button>
+    <a class="btn sec" id="hWhats" target="_blank" rel="noopener">Enviar enlace por WhatsApp</a>
     <button class="btn" id="hOtra">Registrar otra</button>
     <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
   </section>
@@ -200,13 +206,17 @@
     <div class="tarjeta">
       <label for="lConc">Concursante</label>
       <select id="lConc"></select>
-      <button class="btn" onclick="armarLista()">Preparar mensaje</button>
+      <button class="btn" onclick="armarLista()">Preparar sus entradas</button>
       <div class="error" id="lError"></div>
     </div>
     <div class="tarjeta oculto" id="lSalida">
-      <label for="lTexto">Mensaje para WhatsApp</label>
+      <p class="nota" id="lCuenta"></p>
+      <button class="btn verde" onclick="lote('zip')">Descargar imágenes (ZIP)</button>
+      <button class="btn verde" onclick="lote('pdf')">Descargar todas en un PDF</button>
+      <p class="nota" id="lProgreso"></p>
+      <label for="lTexto">Mensaje con los códigos para WhatsApp</label>
       <textarea id="lTexto" readonly></textarea>
-      <a class="btn verde" id="lWhats" target="_blank" rel="noopener">Abrir WhatsApp</a>
+      <a class="btn sec" id="lWhats" target="_blank" rel="noopener">Abrir WhatsApp con el mensaje</a>
       <button class="btn sec" onclick="copiar(document.getElementById('lTexto').value)">Copiar mensaje</button>
     </div>
     <div class="tarjeta oculto" id="lGenerar">
@@ -230,6 +240,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 /* ====== CONFIGURACIÓN: pega aquí la dirección de tu servidor de Apps Script ====== */
 const API = 'https://script.google.com/macros/s/AKfycbzNQTpl4UMnX8DPNTzuEgMbdmjvNK06GRHC7STFHKR8fTZYtsqFBvA6y4d3yazzVVWc4w/exec';
@@ -338,22 +350,28 @@ function htmlComprador(p) {
     <label for="${p}Cel">Celular (WhatsApp)</label>
     <input id="${p}Cel" type="tel" inputmode="numeric" maxlength="9" placeholder="9XXXXXXXX">`;
 }
-function htmlPago(p) {
+function htmlPago(p, monto, editable, conRegalo) {
+  const metodos = ['Efectivo', 'Yape', 'Plin', 'Transferencia'].concat(conRegalo ? ['Regalo (sin pago)'] : []);
   return `
+    <label for="${p}Monto">Monto de la entrada (S/)</label>
+    <input id="${p}Monto" type="number" inputmode="decimal" min="0" step="0.5" value="${monto}" ${editable ? '' : 'readonly style="background:#EEF1F6"'}>
     <label>Método de pago</label>
     <div class="chips" id="${p}Metodos">
-      ${['Efectivo', 'Yape', 'Plin', 'Transferencia'].map(m => `<button type="button" data-m="${m}" onclick="elegirMetodo('${p}', this)">${m}</button>`).join('')}
+      ${metodos.map(m => `<button type="button" data-m="${m}" onclick="elegirMetodo('${p}', this)">${m}</button>`).join('')}
     </div>
     <div id="${p}OperBloque" class="oculto">
-      <label for="${p}Oper">Número de operación</label>
-      <input id="${p}Oper" autocomplete="off">
+      <label for="${p}Oper">Código de operación (Yape / Plin / transferencia)</label>
+      <input id="${p}Oper" autocomplete="off" placeholder="Ej. 01234567">
     </div>`;
 }
 function elegirMetodo(p, b) {
   document.querySelectorAll('#' + p + 'Metodos button').forEach(x => x.classList.remove('sel'));
   b.classList.add('sel');
-  document.getElementById(p + 'Metodos').dataset.valor = b.dataset.m;
-  document.getElementById(p + 'OperBloque').classList.toggle('oculto', b.dataset.m === 'Efectivo');
+  const m = b.dataset.m;
+  document.getElementById(p + 'Metodos').dataset.valor = m;
+  document.getElementById(p + 'OperBloque').classList.toggle('oculto', m === 'Efectivo' || m === 'Regalo (sin pago)');
+  const monto = document.getElementById(p + 'Monto');
+  if (m === 'Regalo (sin pago)' && !monto.readOnly) monto.value = 0;
 }
 function leerComprador(p) {
   return {
@@ -365,7 +383,12 @@ function leerComprador(p) {
 }
 function leerPago(p) {
   const op = document.getElementById(p + 'Oper');
-  return { metodo: document.getElementById(p + 'Metodos').dataset.valor || '', operacion: op ? op.value : '' };
+  const monto = document.getElementById(p + 'Monto');
+  return {
+    metodo: document.getElementById(p + 'Metodos').dataset.valor || '',
+    operacion: op ? op.value : '',
+    monto: monto ? monto.value : ''
+  };
 }
 function validarLocal(d, conPago) {
   if ((d.nombre || '').trim().length < 3) return 'Escribe el nombre completo';
@@ -373,7 +396,8 @@ function validarLocal(d, conPago) {
   if (!d.doc.trim()) return 'Escribe el número de documento';
   if (!/^9\d{8}$/.test(d.celular.replace(/\D/g, ''))) return 'El celular debe tener 9 números y empezar con 9';
   if (conPago && !d.metodo) return 'Elige el método de pago';
-  if (conPago && d.metodo !== 'Efectivo' && !d.operacion.trim()) return 'Escribe el número de operación';
+  if (conPago && (d.monto === '' || isNaN(Number(d.monto)) || Number(d.monto) < 0)) return 'Escribe el monto';
+  if (conPago && ['Yape', 'Plin', 'Transferencia'].includes(d.metodo) && !d.operacion.trim()) return 'Escribe el código de operación';
   return '';
 }
 function opId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -398,8 +422,9 @@ async function cambioVendedor() {
   const v = vendedores.find(x => x.codigo === cod);
   const esConc = v && v.tipo === 'Concursante';
   document.getElementById('bloqueQR').classList.toggle('oculto', !esConc);
-  document.getElementById('bloquePago').innerHTML = v && !esConc
-    ? htmlPago('r') + `<p class="nota">Precio actual: S/ ${sesion.precio}</p>` : '';
+  document.getElementById('bloquePago').innerHTML = !v ? '' : esConc
+    ? '<p class="nota">Datos del pago que hizo el comprador al concursante.</p>' + htmlPago('r', sesion.precio, true, true)
+    : htmlPago('r', sesion.precio, false, false);
   if (esConc) {
     const r = await api('qrLibres', { codigo: cod });
     const sel = document.getElementById('rQR');
@@ -415,12 +440,12 @@ async function registrar() {
   const v = vendedores.find(x => x.codigo === cod);
   if (!v) { err.textContent = 'Elige quién vendió'; return; }
   const esConc = v.tipo === 'Concursante';
-  const d = Object.assign({ vendedor: cod }, leerComprador('r'), esConc ? {} : leerPago('r'));
+  const d = Object.assign({ vendedor: cod }, leerComprador('r'), leerPago('r'));
   if (esConc) {
     d.id = document.getElementById('rQR').value;
     if (!d.id) { err.textContent = 'Elige la entrada de la lista'; return; }
   }
-  const e = validarLocal(d, !esConc);
+  const e = validarLocal(d, true);
   if (e) { err.textContent = e; return; }
   const btn = document.getElementById('btnRegistrar');
   d.opId = btn.dataset.op;
@@ -434,7 +459,7 @@ async function registrar() {
 // ---------- Caja ----------
 function prepararCaja() {
   document.getElementById('bloqueCompradorCaja').innerHTML = htmlComprador('c');
-  document.getElementById('bloquePagoCaja').innerHTML = htmlPago('c');
+  document.getElementById('bloquePagoCaja').innerHTML = htmlPago('c', sesion.config ? sesion.config.precioDia : 30, false, false);
   document.getElementById('cPrecio').textContent = 'Precio en puerta: S/ ' + (sesion.config ? sesion.config.precioDia : '');
   document.getElementById('cError').textContent = '';
   document.getElementById('cIngresa').checked = true;
@@ -460,7 +485,7 @@ async function venderCaja() {
 function hecho(id, nombre, cel, texto, otra) {
   document.getElementById('hTexto').textContent = texto;
   document.getElementById('hCodigo').textContent = id;
-  dibujarQR('qrHecho', id, 200);
+  document.getElementById('hDiseno').innerHTML = '<p class="nota">Preparando la entrada...</p>';
   const link = APP_URL + '?t=' + id;
   const msg = `Hola ${nombre.split(' ')[0]}, esta es tu entrada para ${sesion.config ? sesion.config.evento : 'el evento'}:\n${link}\nMuéstrala en la puerta. Un QR = un ingreso.`;
   const a = document.getElementById('hWhats');
@@ -468,6 +493,7 @@ function hecho(id, nombre, cel, texto, otra) {
   a.dataset.link = link;
   document.getElementById('hOtra').onclick = otra;
   mostrar('hecho');
+  mostrarDiseno('hDiseno', id);
 }
 
 // ---------- Escáner ----------
@@ -605,13 +631,45 @@ async function armarLista() {
   const r = await api('listaConcursante', { codigo: cod });
   if (!r.ok) { err.textContent = r.error; return; }
   const evento = sesion.config ? sesion.config.evento : 'el evento';
-  let t = `Hola ${r.nombre.split(' ')[0]}, estas son tus entradas para ${evento}.\n` +
+  listaActual = { codigo: cod, nombre: r.nombre, qrs: r.qrs.sort((a, b) => Number(a.n) - Number(b.n)) };
+  let t = `Hola ${r.nombre.split(' ')[0]}, estas son tus códigos de entrada para ${evento}.\n` +
     `Cuando entregues una, avísanos el número de entrada y los datos del comprador (nombre, DNI y celular).\n` +
-    `Cada enlace sirve para UNA sola persona.\n\n`;
-  r.qrs.sort((a, b) => Number(a.n) - Number(b.n)).forEach(q => { t += `Entrada ${q.n}: ${APP_URL}?t=${q.id}\n`; });
+    `Cada código sirve para UNA sola persona.\n\n`;
+  listaActual.qrs.forEach(q => { t += `Entrada ${q.n}: ${q.id}\n`; });
   document.getElementById('lTexto').value = t;
   document.getElementById('lWhats').href = 'https://wa.me/?text=' + encodeURIComponent(t);
+  document.getElementById('lCuenta').textContent = listaActual.qrs.length + ' entradas activas de ' + r.nombre;
+  document.getElementById('lProgreso').textContent = '';
   document.getElementById('lSalida').classList.remove('oculto');
+}
+async function lote(tipo) {
+  if (!listaActual || !listaActual.qrs.length) return;
+  const prog = document.getElementById('lProgreso');
+  const base = 'Entradas_' + listaActual.codigo + '_' + listaActual.nombre.replace(/\s+/g, '_');
+  try {
+    let zip = null, pdf = null;
+    if (tipo === 'zip') zip = new JSZip();
+    for (let i = 0; i < listaActual.qrs.length; i++) {
+      const q = listaActual.qrs[i];
+      prog.textContent = `Preparando entrada ${i + 1} de ${listaActual.qrs.length}...`;
+      const cv = await crearEntrada(q.id);
+      const nombre = 'Entrada_' + String(q.n).padStart(2, '0') + '_' + q.id;
+      if (zip) {
+        const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.9));
+        zip.file(nombre + '.jpg', blob);
+      } else {
+        if (!pdf) pdf = new jspdf.jsPDF({ unit: 'px', format: [cv.width, cv.height], hotfixes: ['px_scaling'] });
+        else pdf.addPage([cv.width, cv.height]);
+        pdf.addImage(cv.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, cv.width, cv.height);
+      }
+    }
+    prog.textContent = 'Guardando archivo...';
+    if (zip) bajar(await zip.generateAsync({ type: 'blob' }), base + '.zip');
+    else pdf.save(base + '.pdf');
+    prog.textContent = 'Listo. Revisa tus descargas.';
+  } catch (e) {
+    prog.textContent = 'No se pudo generar: ' + e.message;
+  }
 }
 async function generar() {
   const cod = document.getElementById('lConc').value;
@@ -648,21 +706,116 @@ async function copiar(t) {
   try { await navigator.clipboard.writeText(t); alert('Copiado'); }
   catch (e) { prompt('Copia este texto:', t); }
 }
+function bajar(blob, nombre) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+// ---------- Diseño de la entrada ----------
+const PLANTILLA = 'entrada.jpg';
+const PLANTILLA_ANCHO = 941, PLANTILLA_ALTO = 1672;            // tamaño del diseño original
+const CAJA_QR = { x: 371, y: 1266, w: 199, h: 196 };          // recuadro claro donde va el QR
+let plantillaPromesa = null, entradaActual = null, listaActual = null;
+
+function cargarPlantilla() {
+  if (!plantillaPromesa) {
+    plantillaPromesa = new Promise((ok, mal) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => { plantillaPromesa = null; mal(new Error('No se encontró el diseño de la entrada')); };
+      i.src = PLANTILLA;
+    });
+  }
+  return plantillaPromesa;
+}
+function matrizQR(texto) {
+  const d = document.createElement('div');
+  const q = new QRCode(d, { text: texto, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.M });
+  const m = q._oQRCode, n = m.getModuleCount(), out = [];
+  for (let r = 0; r < n; r++) { const fila = []; for (let c = 0; c < n; c++) fila.push(m.isDark(r, c)); out.push(fila); }
+  return out;
+}
+async function crearEntrada(id) {
+  const img = await cargarPlantilla();
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const sx = cv.width / PLANTILLA_ANCHO, sy = cv.height / PLANTILLA_ALTO;
+  const B = { x: CAJA_QR.x * sx, y: CAJA_QR.y * sy, w: CAJA_QR.w * sx, h: CAJA_QR.h * sy };
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(B.x, B.y, B.w, B.h);
+  const m = matrizQR(id), n = m.length;
+  const cel = Math.floor(Math.min(B.w, B.h) * 0.8 / n);
+  const lado = cel * n;
+  const x0 = Math.round(B.x + (B.w - lado) / 2), y0 = Math.round(B.y + B.h * 0.05);
+  ctx.fillStyle = '#000000';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c]) ctx.fillRect(x0 + c * cel, y0 + r * cel, cel, cel);
+  ctx.font = `bold ${Math.round(B.h * 0.085)}px ui-monospace, Menlo, Consolas, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(id, B.x + B.w / 2, B.y + B.h * 0.94);
+  return cv;
+}
+async function mostrarDiseno(idCont, id) {
+  const cont = document.getElementById(idCont);
+  try {
+    const cv = await crearEntrada(id);
+    entradaActual = { id, cv };
+    cont.innerHTML = '';
+    const im = document.createElement('img');
+    im.alt = 'Entrada ' + id;
+    im.src = cv.toDataURL('image/jpeg', 0.9);
+    cont.appendChild(im);
+    return true;
+  } catch (e) {
+    cont.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    return false;
+  }
+}
+function pngActual() {
+  return new Promise(ok => entradaActual.cv.toBlob(ok, 'image/png'));
+}
+async function descargarPNG() {
+  if (!entradaActual) return;
+  bajar(await pngActual(), 'Entrada_' + entradaActual.id + '.png');
+}
+function descargarPDF() {
+  if (!entradaActual) return;
+  const cv = entradaActual.cv;
+  const pdf = new jspdf.jsPDF({ unit: 'px', format: [cv.width, cv.height], hotfixes: ['px_scaling'] });
+  pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, cv.width, cv.height);
+  pdf.save('Entrada_' + entradaActual.id + '.pdf');
+}
+async function compartirEntrada() {
+  if (!entradaActual) return;
+  const blob = await pngActual();
+  const archivo = new File([blob], 'Entrada_' + entradaActual.id + '.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try { await navigator.share({ files: [archivo], title: 'Entrada' }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  bajar(blob, archivo.name);
+}
 
 // ---------- Ticket público ----------
 async function verTicket(id) {
   document.getElementById('tituloApp').firstChild.textContent = 'Tu entrada';
   mostrar('ticket');
-  dibujarQR('qrTicket', id, 230);
-  document.getElementById('tCodigo').textContent = id;
   const r = await api('ticket', { id });
-  if (!r.ok) { document.getElementById('tError').textContent = r.error; document.getElementById('tEvento').textContent = 'Entrada no válida'; document.getElementById('qrTicket').innerHTML = ''; return; }
-  document.getElementById('tEvento').textContent = r.evento;
+  if (!r.ok || r.estado === 'Anulada') {
+    document.getElementById('tError').textContent = r.ok ? 'Esta entrada fue ANULADA. Comunícate con la organización.' : r.error;
+    document.getElementById('tDiseno').innerHTML = '';
+  } else if (await mostrarDiseno('tDiseno', id)) {
+    document.getElementById('tBotones').classList.remove('oculto');
+  }
+  if (!r.ok) return;
   document.getElementById('tNombre').textContent = r.comprador || 'Pendiente de registro';
   document.getElementById('tDoc').textContent = r.doc || '-';
   document.getElementById('tVend').textContent = r.vendedor;
   document.getElementById('tEstado').textContent = r.estado === 'Usada' ? 'Ya ingresó' : r.estado === 'Anulada' ? 'ANULADA' : 'Válida';
-  if (r.estado === 'Anulada') document.getElementById('qrTicket').innerHTML = '';
 }
 
 // ---------- Inicio ----------
