@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#1F3864">
+<title>Entradas del concurso</title>
+<style>
+  :root {
+    --azul: #1F3864; --azul-claro: #E8EDF6; --texto: #1B1F27; --gris: #5E6573; --borde: #D5DAE3;
+    --fondo: #F4F6FA; --blanco: #FFFFFF; --verde: #137B3B; --verde-claro: #E3F4E9;
+    --rojo: #B3261E; --rojo-claro: #FBE7E5; --ambar: #8A5A00; --ambar-claro: #FFF3D6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--fondo); color: var(--texto); font-size: 18px; line-height: 1.45; }
+  header { background: var(--azul); color: #fff; padding: 14px 16px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header small { display: block; font-size: 13px; opacity: .8; font-weight: 400; }
+  header button { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    border-radius: 8px; padding: 8px 12px; font-size: 15px; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px; }
+  .vista { display: none; }
+  .vista.activa { display: block; }
+  h2 { font-size: 22px; margin: 4px 0 14px; }
+  .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; font-size: 16px; }
+  input, select, textarea { width: 100%; font-size: 19px; padding: 13px 12px; border: 1.5px solid var(--borde);
+    border-radius: 10px; background: #fff; color: var(--texto); }
+  input:focus, select:focus { outline: 3px solid #9DB3DA; border-color: var(--azul); }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 16px; font-size: 19px;
+    font-weight: 600; background: var(--azul); color: #fff; margin-top: 16px; cursor: pointer; text-align: center; text-decoration: none; }
+  .btn.sec { background: var(--azul-claro); color: var(--azul); }
+  .btn.verde { background: var(--verde); }
+  .btn.rojo { background: var(--rojo); }
+  .btn:disabled { opacity: .55; }
+  .menu { display: grid; gap: 12px; }
+  .menu button { text-align: left; padding: 18px 16px; border-radius: 14px; border: 1px solid var(--borde);
+    background: #fff; font-size: 19px; font-weight: 600; color: var(--azul); }
+  .menu button span { display: block; font-size: 15px; font-weight: 400; color: var(--gris); margin-top: 2px; }
+  .error { color: var(--rojo); font-size: 15px; margin-top: 8px; min-height: 1em; }
+  .nota { color: var(--gris); font-size: 15px; }
+  .fila { display: flex; gap: 10px; }
+  .fila > * { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button { border: 1.5px solid var(--borde); background: #fff; border-radius: 999px; padding: 10px 16px; font-size: 17px; }
+  .chips button.sel { background: var(--azul); color: #fff; border-color: var(--azul); }
+  #lector { width: 100%; border-radius: 14px; overflow: hidden; background: #000; min-height: 260px; }
+  .resultado { border-radius: 16px; padding: 20px 18px; margin-top: 14px; border: 2px solid; }
+  .resultado.ok { background: var(--verde-claro); border-color: var(--verde); color: #0B4A23; }
+  .resultado.mal { background: var(--rojo-claro); border-color: var(--rojo); color: #6E140F; }
+  .resultado.aviso { background: var(--ambar-claro); border-color: var(--ambar); color: #4F3300; }
+  .resultado .grande { font-size: 34px; font-weight: 800; letter-spacing: .5px; }
+  .dato { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.08); font-size: 17px; }
+  .dato b { text-align: right; }
+  .item { padding: 12px 0; border-bottom: 1px solid var(--borde); }
+  .item:last-child { border-bottom: 0; }
+  .estado { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 14px; font-weight: 600; }
+  .e-Generada { background: #ECEEF2; color: #3B4250; }
+  .e-Entregada { background: var(--azul-claro); color: var(--azul); }
+  .e-Usada { background: var(--verde-claro); color: var(--verde); }
+  .e-Anulada { background: var(--rojo-claro); color: var(--rojo); }
+  .ticket { background: #fff; border-radius: 18px; border: 1px solid var(--borde); overflow: hidden; text-align: center; }
+  .ticket .cab { background: var(--azul); color: #fff; padding: 18px; }
+  .ticket .cab div { font-size: 22px; font-weight: 700; }
+  #qrTicket { display: inline-block; padding: 16px; background: #fff; margin: 18px auto 6px; }
+  .codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 22px; letter-spacing: 3px; font-weight: 700; }
+  .cargando { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center;
+    justify-content: center; z-index: 20; color: #fff; font-size: 20px; font-weight: 600; }
+  .cargando.si { display: flex; }
+  .oculto { display: none !important; }
+  textarea { min-height: 160px; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<header id="cabecera">
+  <h1 id="tituloApp">Entradas<small id="quien"></small></h1>
+  <button id="btnSalir" class="oculto" onclick="salir()">Salir</button>
+</header>
+
+<main>
+
+  <!-- Ticket público -->
+  <section id="v-ticket" class="vista">
+    <div class="ticket">
+      <div class="cab"><small>Entrada</small><div id="tEvento">Cargando...</div></div>
+      <div id="qrTicket"></div>
+      <div class="codigo" id="tCodigo"></div>
+      <div class="tarjeta" style="margin:16px;text-align:left">
+        <div class="dato"><span>A nombre de</span><b id="tNombre"></b></div>
+        <div class="dato"><span>Documento</span><b id="tDoc"></b></div>
+        <div class="dato"><span>Vendida por</span><b id="tVend"></b></div>
+        <div class="dato"><span>Estado</span><b id="tEstado"></b></div>
+      </div>
+      <p class="nota" style="padding:0 16px 18px">Muestra este código en la puerta. Toma una captura de pantalla para tenerlo sin internet. Un QR solo sirve para un ingreso.</p>
+    </div>
+    <div class="error" id="tError"></div>
+  </section>
+
+  <!-- Ingreso del personal -->
+  <section id="v-login" class="vista">
+    <h2>Ingreso del personal</h2>
+    <div class="tarjeta">
+      <label for="clave">Tu clave personal</label>
+      <input id="clave" type="password" inputmode="numeric" autocomplete="off" placeholder="6 números">
+      <button class="btn" onclick="entrar()">Entrar</button>
+      <div class="error" id="loginError"></div>
+    </div>
+    <p class="nota">Si eres comprador, abre el enlace de tu entrada que te enviaron por WhatsApp.</p>
+  </section>
+
+  <!-- Menú -->
+  <section id="v-menu" class="vista">
+    <h2>¿Qué vas a hacer?</h2>
+    <div class="menu" id="menuOpciones"></div>
+  </section>
+
+  <!-- Escanear -->
+  <section id="v-escanear" class="vista">
+    <h2>Escanear entradas</h2>
+    <div id="lector"></div>
+    <div id="panelResultado"></div>
+    <button class="btn verde oculto" id="btnSiguiente" onclick="siguienteEscaneo()">Escanear siguiente</button>
+    <details class="tarjeta" style="margin-top:14px">
+      <summary>Escribir el código a mano</summary>
+      <label for="codigoManual">Código de 10 letras/números</label>
+      <input id="codigoManual" autocapitalize="characters" maxlength="10">
+      <button class="btn sec" onclick="validarManual()">Validar</button>
+    </details>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Registrar venta -->
+  <section id="v-registrar" class="vista">
+    <h2 id="tituloRegistro">Registrar entrada</h2>
+    <div class="tarjeta">
+      <label>¿Quién vendió?</label>
+      <select id="rVendedor" onchange="cambioVendedor()"></select>
+      <div id="bloqueQR" class="oculto">
+        <label for="rQR">¿Qué entrada de su lista?</label>
+        <select id="rQR"></select>
+        <p class="nota">El concursante debe decirte el número de entrada que le dio al comprador.</p>
+      </div>
+      <div id="bloqueComprador"></div>
+      <div id="bloquePago"></div>
+      <button class="btn" id="btnRegistrar" onclick="registrar()">Registrar</button>
+      <div class="error" id="rError"></div>
+    </div>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Caja -->
+  <section id="v-caja" class="vista">
+    <h2>Venta en puerta</h2>
+    <div class="tarjeta">
+      <p class="nota" id="cPrecio"></p>
+      <div id="bloqueCompradorCaja"></div>
+      <div id="bloquePagoCaja"></div>
+      <label style="display:flex;gap:10px;align-items:center;font-weight:600">
+        <input type="checkbox" id="cIngresa" checked style="width:26px;height:26px"> Ingresa ahora mismo
+      </label>
+      <p class="nota">Si está marcado, la entrada queda usada y la persona pasa directo con su sello.</p>
+      <button class="btn" id="btnCaja" onclick="venderCaja()">Cobrar y registrar</button>
+      <div class="error" id="cError"></div>
+    </div>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Resultado de una venta -->
+  <section id="v-hecho" class="vista">
+    <div class="resultado ok"><div class="grande">Registrado</div><div id="hTexto"></div></div>
+    <div class="ticket" style="margin-top:14px;padding-bottom:16px">
+      <div id="qrHecho" style="display:inline-block;padding:16px"></div>
+      <div class="codigo" id="hCodigo"></div>
+    </div>
+    <a class="btn verde" id="hWhats" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+    <button class="btn sec" onclick="copiar(document.getElementById('hWhats').dataset.link)">Copiar enlace</button>
+    <button class="btn" id="hOtra">Registrar otra</button>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Buscar -->
+  <section id="v-buscar" class="vista">
+    <h2>Buscar entradas</h2>
+    <div class="tarjeta">
+      <label for="bQ">DNI, código QR, celular o nombre</label>
+      <input id="bQ" autocomplete="off">
+      <button class="btn" onclick="buscar()">Buscar</button>
+      <div class="error" id="bError"></div>
+    </div>
+    <div class="tarjeta" id="bResultados"></div>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Listas para concursantes -->
+  <section id="v-listas" class="vista">
+    <h2>Lista de un concursante</h2>
+    <div class="tarjeta">
+      <label for="lConc">Concursante</label>
+      <select id="lConc"></select>
+      <button class="btn" onclick="armarLista()">Preparar mensaje</button>
+      <div class="error" id="lError"></div>
+    </div>
+    <div class="tarjeta oculto" id="lSalida">
+      <label for="lTexto">Mensaje para WhatsApp</label>
+      <textarea id="lTexto" readonly></textarea>
+      <a class="btn verde" id="lWhats" target="_blank" rel="noopener">Abrir WhatsApp</a>
+      <button class="btn sec" onclick="copiar(document.getElementById('lTexto').value)">Copiar mensaje</button>
+    </div>
+    <div class="tarjeta oculto" id="lGenerar">
+      <label for="gCant">Reponer QR perdidos (genera nuevos)</label>
+      <div class="fila"><input id="gCant" type="number" min="1" max="50" value="1"><button class="btn" style="margin-top:0" onclick="generar()">Generar</button></div>
+      <p class="nota">Primero anula los perdidos desde Buscar.</p>
+    </div>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+  <!-- Resumen -->
+  <section id="v-resumen" class="vista">
+    <h2>Resumen</h2>
+    <div class="tarjeta" id="resDatos"></div>
+    <button class="btn sec" onclick="abrir('resumen')">Actualizar</button>
+    <button class="btn sec" onclick="volverMenu()">Volver al menú</button>
+  </section>
+
+</main>
+<div class="cargando" id="cargando">Un momento...</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* ====== CONFIGURACIÓN: pega aquí la dirección de tu servidor de Apps Script ====== */
+const API = 'https://script.google.com/macros/s/AKfycbzNQTpl4UMnX8DPNTzuEgMbdmjvNK06GRHC7STFHKR8fTZYtsqFBvA6y4d3yazzVVWc4w/exec';
+/* ================================================================================== */
+
+const APP_URL = location.origin + location.pathname;
+let sesion = null;      // { clave, nombre, rol, config }
+let vendedores = [];
+let lector = null, escaneando = false, ultimoCodigo = '', ultimoTiempo = 0, temporizador = null;
+
+const MENU = {
+  escanear: ['Escanear entradas', 'Controlar el ingreso en la puerta'],
+  registrar: ['Registrar venta o datos', 'Concursantes, organizadora o asistente'],
+  caja: ['Venta en puerta', 'Cobrar y dar ingreso el mismo día'],
+  buscar: ['Buscar entradas', 'Por DNI, código, celular o nombre'],
+  listas: ['Listas de concursantes', 'Enviar sus 20 entradas por WhatsApp'],
+  resumen: ['Resumen', 'Totales del evento y de caja']
+};
+const MENU_ROL = {
+  Administrador: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen'],
+  Registro: ['registrar', 'buscar', 'listas'],
+  Caja: ['caja', 'buscar'],
+  Puerta: ['escanear']
+};
+
+// ---------- Comunicación con el servidor ----------
+async function api(accion, datos = {}, silencioso = false) {
+  if (!silencioso) document.getElementById('cargando').classList.add('si');
+  try {
+    const cuerpo = Object.assign({ accion, clave: sesion ? sesion.clave : '' }, datos);
+    const r = await fetch(API, { method: 'POST', body: JSON.stringify(cuerpo) });
+    const j = await r.json();
+    if (j.sesion === false && sesion) { salir(); }
+    return j;
+  } catch (e) {
+    return { ok: false, error: 'Sin conexión. Revisa tu internet e intenta otra vez.' };
+  } finally {
+    document.getElementById('cargando').classList.remove('si');
+  }
+}
+
+// ---------- Navegación ----------
+function mostrar(id) {
+  document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+  document.getElementById('v-' + id).classList.add('activa');
+  window.scrollTo(0, 0);
+}
+function volverMenu() { detenerLector(); mostrar('menu'); }
+
+function pintarMenu() {
+  const cont = document.getElementById('menuOpciones');
+  cont.innerHTML = '';
+  (MENU_ROL[sesion.rol] || []).forEach(k => {
+    const b = document.createElement('button');
+    b.innerHTML = MENU[k][0] + '<span>' + MENU[k][1] + '</span>';
+    b.onclick = () => abrir(k);
+    cont.appendChild(b);
+  });
+  document.getElementById('quien').textContent = sesion.nombre + ' · ' + sesion.rol;
+  document.getElementById('btnSalir').classList.remove('oculto');
+}
+
+async function abrir(k) {
+  if (k === 'escanear') { mostrar('escanear'); iniciarLector(); }
+  if (k === 'registrar') { await cargarVendedores(); prepararRegistro(); mostrar('registrar'); }
+  if (k === 'caja') { prepararCaja(); mostrar('caja'); }
+  if (k === 'buscar') { document.getElementById('bResultados').innerHTML = ''; mostrar('buscar'); }
+  if (k === 'listas') { await cargarVendedores(); prepararListas(); mostrar('listas'); }
+  if (k === 'resumen') { await verResumen(); mostrar('resumen'); }
+}
+
+// ---------- Sesión ----------
+async function entrar() {
+  const clave = document.getElementById('clave').value.trim();
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  if (!clave) { err.textContent = 'Escribe tu clave'; return; }
+  sesion = { clave };
+  const r = await api('login');
+  if (!r.ok) { sesion = null; err.textContent = r.error; return; }
+  sesion = { clave, nombre: r.nombre, rol: r.rol, config: r.config };
+  try { localStorage.setItem('clave', clave); } catch (e) {}
+  document.getElementById('clave').value = '';
+  pintarMenu();
+  mostrar('menu');
+}
+function salir() {
+  detenerLector();
+  sesion = null;
+  try { localStorage.removeItem('clave'); } catch (e) {}
+  document.getElementById('quien').textContent = '';
+  document.getElementById('btnSalir').classList.add('oculto');
+  mostrar('login');
+}
+
+// ---------- Formularios reutilizables ----------
+function htmlComprador(p) {
+  return `
+    <label for="${p}Nombre">Nombre completo del comprador</label>
+    <input id="${p}Nombre" autocomplete="off">
+    <label for="${p}TipoDoc">Tipo de documento</label>
+    <select id="${p}TipoDoc"><option>DNI</option><option>Carnet de extranjería</option><option>Pasaporte</option></select>
+    <label for="${p}Doc">Número de documento</label>
+    <input id="${p}Doc" autocomplete="off" inputmode="numeric">
+    <p class="nota">Si es menor de edad, puedes poner el DNI del adulto que lo acompaña.</p>
+    <label for="${p}Cel">Celular (WhatsApp)</label>
+    <input id="${p}Cel" type="tel" inputmode="numeric" maxlength="9" placeholder="9XXXXXXXX">`;
+}
+function htmlPago(p) {
+  return `
+    <label>Método de pago</label>
+    <div class="chips" id="${p}Metodos">
+      ${['Efectivo', 'Yape', 'Plin', 'Transferencia'].map(m => `<button type="button" data-m="${m}" onclick="elegirMetodo('${p}', this)">${m}</button>`).join('')}
+    </div>
+    <div id="${p}OperBloque" class="oculto">
+      <label for="${p}Oper">Número de operación</label>
+      <input id="${p}Oper" autocomplete="off">
+    </div>`;
+}
+function elegirMetodo(p, b) {
+  document.querySelectorAll('#' + p + 'Metodos button').forEach(x => x.classList.remove('sel'));
+  b.classList.add('sel');
+  document.getElementById(p + 'Metodos').dataset.valor = b.dataset.m;
+  document.getElementById(p + 'OperBloque').classList.toggle('oculto', b.dataset.m === 'Efectivo');
+}
+function leerComprador(p) {
+  return {
+    nombre: document.getElementById(p + 'Nombre').value,
+    tipoDoc: document.getElementById(p + 'TipoDoc').value,
+    doc: document.getElementById(p + 'Doc').value,
+    celular: document.getElementById(p + 'Cel').value
+  };
+}
+function leerPago(p) {
+  const op = document.getElementById(p + 'Oper');
+  return { metodo: document.getElementById(p + 'Metodos').dataset.valor || '', operacion: op ? op.value : '' };
+}
+function validarLocal(d, conPago) {
+  if ((d.nombre || '').trim().length < 3) return 'Escribe el nombre completo';
+  if (d.tipoDoc === 'DNI' && !/^\d{8}$/.test(d.doc.trim())) return 'El DNI debe tener 8 números';
+  if (!d.doc.trim()) return 'Escribe el número de documento';
+  if (!/^9\d{8}$/.test(d.celular.replace(/\D/g, ''))) return 'El celular debe tener 9 números y empezar con 9';
+  if (conPago && !d.metodo) return 'Elige el método de pago';
+  if (conPago && d.metodo !== 'Efectivo' && !d.operacion.trim()) return 'Escribe el número de operación';
+  return '';
+}
+function opId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// ---------- Registrar ----------
+async function cargarVendedores() {
+  const r = await api('vendedores');
+  if (r.ok) { vendedores = r.vendedores; sesion.precio = r.precio; }
+}
+function prepararRegistro() {
+  const sel = document.getElementById('rVendedor');
+  sel.innerHTML = '<option value="">Elige...</option>' + vendedores.filter(v => v.codigo !== 'CAJA')
+    .map(v => `<option value="${esc(v.codigo)}">${esc(v.nombre)} (${esc(v.tipo)})</option>`).join('');
+  document.getElementById('bloqueComprador').innerHTML = htmlComprador('r');
+  document.getElementById('bloquePago').innerHTML = '';
+  document.getElementById('bloqueQR').classList.add('oculto');
+  document.getElementById('rError').textContent = '';
+  document.getElementById('btnRegistrar').dataset.op = opId();
+}
+async function cambioVendedor() {
+  const cod = document.getElementById('rVendedor').value;
+  const v = vendedores.find(x => x.codigo === cod);
+  const esConc = v && v.tipo === 'Concursante';
+  document.getElementById('bloqueQR').classList.toggle('oculto', !esConc);
+  document.getElementById('bloquePago').innerHTML = v && !esConc
+    ? htmlPago('r') + `<p class="nota">Precio actual: S/ ${sesion.precio}</p>` : '';
+  if (esConc) {
+    const r = await api('qrLibres', { codigo: cod });
+    const sel = document.getElementById('rQR');
+    sel.innerHTML = r.ok && r.qrs.length
+      ? '<option value="">Elige...</option>' + r.qrs.map(q => `<option value="${q.id}">Entrada N° ${q.n} (${q.id})${q.estado === 'Usada' ? ' - ya ingresó' : ''}</option>`).join('')
+      : '<option value="">No le quedan entradas sin datos</option>';
+  }
+}
+async function registrar() {
+  const err = document.getElementById('rError');
+  err.textContent = '';
+  const cod = document.getElementById('rVendedor').value;
+  const v = vendedores.find(x => x.codigo === cod);
+  if (!v) { err.textContent = 'Elige quién vendió'; return; }
+  const esConc = v.tipo === 'Concursante';
+  const d = Object.assign({ vendedor: cod }, leerComprador('r'), esConc ? {} : leerPago('r'));
+  if (esConc) {
+    d.id = document.getElementById('rQR').value;
+    if (!d.id) { err.textContent = 'Elige la entrada de la lista'; return; }
+  }
+  const e = validarLocal(d, !esConc);
+  if (e) { err.textContent = e; return; }
+  const btn = document.getElementById('btnRegistrar');
+  d.opId = btn.dataset.op;
+  btn.disabled = true;
+  const r = await api('registrar', d);
+  btn.disabled = false;
+  if (!r.ok) { err.textContent = r.error; return; }
+  hecho(r.id, d.nombre, d.celular, esConc ? 'Datos guardados en la entrada N° ' + r.numero + ' de ' + v.nombre : 'Venta registrada a nombre de ' + v.nombre, () => abrir('registrar'));
+}
+
+// ---------- Caja ----------
+function prepararCaja() {
+  document.getElementById('bloqueCompradorCaja').innerHTML = htmlComprador('c');
+  document.getElementById('bloquePagoCaja').innerHTML = htmlPago('c');
+  document.getElementById('cPrecio').textContent = 'Precio en puerta: S/ ' + (sesion.config ? sesion.config.precioDia : '');
+  document.getElementById('cError').textContent = '';
+  document.getElementById('cIngresa').checked = true;
+  document.getElementById('btnCaja').dataset.op = opId();
+}
+async function venderCaja() {
+  const err = document.getElementById('cError');
+  err.textContent = '';
+  const d = Object.assign({}, leerComprador('c'), leerPago('c'));
+  const e = validarLocal(d, true);
+  if (e) { err.textContent = e; return; }
+  d.ingresaAhora = document.getElementById('cIngresa').checked;
+  const btn = document.getElementById('btnCaja');
+  d.opId = btn.dataset.op;
+  btn.disabled = true;
+  const r = await api('venderPuerta', d);
+  btn.disabled = false;
+  if (!r.ok) { err.textContent = r.error; return; }
+  hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} (${d.metodo}). ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'));
+}
+
+// ---------- Pantalla de venta completada ----------
+function hecho(id, nombre, cel, texto, otra) {
+  document.getElementById('hTexto').textContent = texto;
+  document.getElementById('hCodigo').textContent = id;
+  dibujarQR('qrHecho', id, 200);
+  const link = APP_URL + '?t=' + id;
+  const msg = `Hola ${nombre.split(' ')[0]}, esta es tu entrada para ${sesion.config ? sesion.config.evento : 'el evento'}:\n${link}\nMuéstrala en la puerta. Un QR = un ingreso.`;
+  const a = document.getElementById('hWhats');
+  a.href = 'https://wa.me/51' + cel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
+  a.dataset.link = link;
+  document.getElementById('hOtra').onclick = otra;
+  mostrar('hecho');
+}
+
+// ---------- Escáner ----------
+function iniciarLector() {
+  document.getElementById('panelResultado').innerHTML = '';
+  document.getElementById('btnSiguiente').classList.add('oculto');
+  if (lector) { try { lector.resume(); } catch (e) {} escaneando = true; return; }
+  lector = new Html5Qrcode('lector');
+  lector.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, alLeer, () => {})
+    .then(() => { escaneando = true; })
+    .catch(() => {
+      document.getElementById('panelResultado').innerHTML =
+        '<div class="resultado aviso">No se pudo abrir la cámara. Revisa que hayas dado permiso al navegador, o escribe el código a mano abajo.</div>';
+    });
+}
+function detenerLector() {
+  clearTimeout(temporizador);
+  if (lector) { lector.stop().catch(() => {}).finally(() => { try { lector.clear(); } catch (e) {} lector = null; }); }
+  escaneando = false;
+}
+function alLeer(texto) {
+  if (!escaneando) return;
+  const ahora = Date.now();
+  if (texto === ultimoCodigo && ahora - ultimoTiempo < 4000) return;
+  ultimoCodigo = texto; ultimoTiempo = ahora;
+  escaneando = false;
+  try { lector.pause(true); } catch (e) {}
+  validar(texto);
+}
+function validarManual() {
+  const c = document.getElementById('codigoManual').value.trim().toUpperCase();
+  if (c.length !== 10) { document.getElementById('panelResultado').innerHTML = '<div class="resultado aviso">El código tiene 10 caracteres.</div>'; return; }
+  escaneando = false;
+  try { lector && lector.pause(true); } catch (e) {}
+  validar(c);
+  document.getElementById('codigoManual').value = '';
+}
+async function validar(codigo) {
+  const panel = document.getElementById('panelResultado');
+  panel.innerHTML = '<div class="resultado aviso"><div class="grande">Validando...</div></div>';
+  const r = await api('escanear', { id: codigo }, true);
+  if (!r.ok) {
+    panel.innerHTML = `<div class="resultado aviso"><div class="grande">Sin respuesta</div>${r.error}<br>Vuelve a escanear.</div>`;
+    sonido(false);
+  } else {
+    const filas = (pares) => pares.filter(p => p[1]).map(p => `<div class="dato"><span>${esc(p[0])}</span><b>${esc(p[1])}</b></div>`).join('');
+    const vend = r.vendedor ? r.vendedor + (r.tipoVendedor === 'Concursante' ? ' (concursante' + (r.nLista ? ', N° ' + r.nLista : '') + ')' : ' (organización)') : '';
+    const comunes = [['Comprador', r.comprador], [r.tipoDoc || 'Documento', r.doc], ['Vendió', vend], ['Registrada', r.fechaRegistro], ['Escaneada', r.horaEscaneo], ['Código', r.id]];
+    if (r.resultado === 'Válido') {
+      panel.innerHTML = `<div class="resultado ok"><div class="grande">PUEDE PASAR</div>${r.sinDatos ? '<div><b>Concursante sin datos del comprador.</b> Pide su DNI si es posible.</div>' : ''}${filas(comunes)}</div>`;
+      sonido(true);
+      temporizador = setTimeout(siguienteEscaneo, 3500);
+    } else if (r.resultado === 'Ya usado') {
+      panel.innerHTML = `<div class="resultado mal"><div class="grande">YA FUE USADA</div><div>Ingresó: <b>${r.horaIngreso}</b> (escaneó ${esc(r.escaneadoPor)})</div>${filas(comunes)}<p>Si tiene sello, es un reingreso. Si no, llama al supervisor.</p></div>`;
+      sonido(false);
+    } else if (r.resultado === 'Anulado') {
+      panel.innerHTML = `<div class="resultado mal"><div class="grande">ANULADA</div>${filas(comunes)}<p>${esc(r.obs)}</p><p>Deriva al supervisor.</p></div>`;
+      sonido(false);
+    } else {
+      panel.innerHTML = `<div class="resultado mal"><div class="grande">NO EXISTE</div><p>Este código no es del evento. Deriva al supervisor o a caja.</p>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}</div>`;
+      sonido(false);
+    }
+  }
+  document.getElementById('btnSiguiente').classList.remove('oculto');
+  panel.scrollIntoView({ behavior: 'smooth' });
+}
+function siguienteEscaneo() {
+  clearTimeout(temporizador);
+  document.getElementById('panelResultado').innerHTML = '';
+  document.getElementById('btnSiguiente').classList.add('oculto');
+  window.scrollTo(0, 0);
+  if (lector) { try { lector.resume(); } catch (e) {} }
+  escaneando = true;
+}
+function sonido(bien) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(bien ? 120 : [250, 100, 250]);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.frequency.value = bien ? 880 : 220; o.connect(g); g.connect(ctx.destination);
+    g.gain.value = 0.15; o.start(); o.stop(ctx.currentTime + (bien ? 0.15 : 0.5));
+  } catch (e) {}
+}
+
+// ---------- Buscar ----------
+async function buscar() {
+  const q = document.getElementById('bQ').value.trim();
+  const err = document.getElementById('bError');
+  err.textContent = '';
+  const r = await api('buscar', { q });
+  const cont = document.getElementById('bResultados');
+  if (!r.ok) { err.textContent = r.error; cont.innerHTML = ''; return; }
+  if (!r.resultados.length) { cont.innerHTML = '<p class="nota">Sin resultados.</p>'; return; }
+  const admin = sesion.rol === 'Administrador';
+  cont.innerHTML = `<p class="nota">${r.resultados.length} resultado(s)</p>` + r.resultados.map(x => `
+    <div class="item">
+      <div><b>${esc(x.comprador) || 'Sin datos del comprador'}</b> <span class="estado e-${x.estado}">${x.estado}</span></div>
+      <div class="nota">Doc: ${esc(x.doc) || '-'} · Cel: ${esc(x.celular) || '-'}</div>
+      <div class="nota">Vendió: ${esc(x.vendedor)}${x.nLista ? ' (N° ' + x.nLista + ')' : ''} · Código: ${x.id}</div>
+      ${x.horaIngreso ? `<div class="nota">Ingresó: ${x.horaIngreso}</div>` : ''}
+      <div class="fila">
+        <button class="btn sec" style="margin-top:8px;padding:10px" onclick="reenviar('${x.id}','${(x.comprador || '').replace(/'/g, '')}','${x.celular}')">Reenviar</button>
+        ${admin && x.estado !== 'Anulada' && x.estado !== 'Usada' ? `<button class="btn rojo" style="margin-top:8px;padding:10px" onclick="anular('${x.id}')">Anular</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+function reenviar(id, nombre, cel) {
+  const link = APP_URL + '?t=' + id;
+  const msg = `Hola${nombre ? ' ' + nombre.split(' ')[0] : ''}, esta es tu entrada:\n${link}`;
+  window.open((cel ? 'https://wa.me/51' + cel : 'https://wa.me/') + '?text=' + encodeURIComponent(msg), '_blank');
+}
+async function anular(id) {
+  const motivo = prompt('¿Por qué se anula la entrada ' + id + '?');
+  if (!motivo) return;
+  if (!confirm('Anular ' + id + '. Esto no se puede deshacer. ¿Continuar?')) return;
+  const r = await api('anular', { id, motivo });
+  alert(r.ok ? 'Entrada anulada' : r.error);
+  buscar();
+}
+
+// ---------- Listas de concursantes ----------
+function prepararListas() {
+  const sel = document.getElementById('lConc');
+  sel.innerHTML = '<option value="">Elige...</option>' + vendedores.filter(v => v.tipo === 'Concursante')
+    .map(v => `<option value="${esc(v.codigo)}">${esc(v.nombre)}</option>`).join('');
+  document.getElementById('lSalida').classList.add('oculto');
+  document.getElementById('lGenerar').classList.toggle('oculto', sesion.rol !== 'Administrador');
+  document.getElementById('lError').textContent = '';
+}
+async function armarLista() {
+  const cod = document.getElementById('lConc').value;
+  const err = document.getElementById('lError');
+  err.textContent = '';
+  if (!cod) { err.textContent = 'Elige un concursante'; return; }
+  const r = await api('listaConcursante', { codigo: cod });
+  if (!r.ok) { err.textContent = r.error; return; }
+  const evento = sesion.config ? sesion.config.evento : 'el evento';
+  let t = `Hola ${r.nombre.split(' ')[0]}, estas son tus entradas para ${evento}.\n` +
+    `Cuando entregues una, avísanos el número de entrada y los datos del comprador (nombre, DNI y celular).\n` +
+    `Cada enlace sirve para UNA sola persona.\n\n`;
+  r.qrs.sort((a, b) => Number(a.n) - Number(b.n)).forEach(q => { t += `Entrada ${q.n}: ${APP_URL}?t=${q.id}\n`; });
+  document.getElementById('lTexto').value = t;
+  document.getElementById('lWhats').href = 'https://wa.me/?text=' + encodeURIComponent(t);
+  document.getElementById('lSalida').classList.remove('oculto');
+}
+async function generar() {
+  const cod = document.getElementById('lConc').value;
+  const cantidad = document.getElementById('gCant').value;
+  if (!cod) { document.getElementById('lError').textContent = 'Elige un concursante'; return; }
+  if (!confirm('Generar ' + cantidad + ' QR nuevos para este concursante?')) return;
+  const r = await api('generar', { codigo: cod, cantidad });
+  alert(r.ok ? 'Se generaron ' + r.generados + ' QR' : r.error);
+  if (r.ok) armarLista();
+}
+
+// ---------- Resumen ----------
+async function verResumen() {
+  const r = await api('resumen');
+  const c = document.getElementById('resDatos');
+  if (!r.ok) { c.innerHTML = '<p class="error">' + r.error + '</p>'; return; }
+  const s = r.resumen;
+  const fila = (a, b) => `<div class="dato"><span>${a}</span><b>${b}</b></div>`;
+  c.innerHTML = fila('Entradas en el sistema', s.total) + fila('Sin datos del comprador', s.generada) +
+    fila('Con datos, aún no ingresan', s.entregada) + fila('Ya ingresaron', s.usada) + fila('Anuladas', s.anulada) +
+    fila('Escaneos rechazados', s.rechazos) +
+    Object.keys(s.caja).map(m => fila('Caja · ' + m, s.caja[m])).join('') + fila('Total cobrado en caja', 'S/ ' + s.montoCaja) +
+    '<p class="nota">El detalle completo está en la hoja de Google.</p>';
+}
+
+// ---------- Utilidades ----------
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function dibujarQR(idCont, texto, tam) {
+  const c = document.getElementById(idCont);
+  c.innerHTML = '';
+  new QRCode(c, { text: texto, width: tam, height: tam, correctLevel: QRCode.CorrectLevel.M });
+}
+async function copiar(t) {
+  try { await navigator.clipboard.writeText(t); alert('Copiado'); }
+  catch (e) { prompt('Copia este texto:', t); }
+}
+
+// ---------- Ticket público ----------
+async function verTicket(id) {
+  document.getElementById('tituloApp').firstChild.textContent = 'Tu entrada';
+  mostrar('ticket');
+  dibujarQR('qrTicket', id, 230);
+  document.getElementById('tCodigo').textContent = id;
+  const r = await api('ticket', { id });
+  if (!r.ok) { document.getElementById('tError').textContent = r.error; document.getElementById('tEvento').textContent = 'Entrada no válida'; document.getElementById('qrTicket').innerHTML = ''; return; }
+  document.getElementById('tEvento').textContent = r.evento;
+  document.getElementById('tNombre').textContent = r.comprador || 'Pendiente de registro';
+  document.getElementById('tDoc').textContent = r.doc || '-';
+  document.getElementById('tVend').textContent = r.vendedor;
+  document.getElementById('tEstado').textContent = r.estado === 'Usada' ? 'Ya ingresó' : r.estado === 'Anulada' ? 'ANULADA' : 'Válida';
+  if (r.estado === 'Anulada') document.getElementById('qrTicket').innerHTML = '';
+}
+
+// ---------- Inicio ----------
+(async function inicio() {
+  const t = new URLSearchParams(location.search).get('t');
+  if (t) { verTicket(t.toUpperCase()); return; }
+  if (API.indexOf('PEGAR_AQUI') === 0) { mostrar('login'); document.getElementById('loginError').textContent = 'Falta configurar la dirección del servidor en el archivo.'; return; }
+  let guardada = null;
+  try { guardada = localStorage.getItem('clave'); } catch (e) {}
+  if (guardada) {
+    sesion = { clave: guardada };
+    const r = await api('login');
+    if (r.ok) { sesion = { clave: guardada, nombre: r.nombre, rol: r.rol, config: r.config }; pintarMenu(); mostrar('menu'); return; }
+    sesion = null;
+  }
+  mostrar('login');
+  document.getElementById('clave').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+})();
+</script>
+</body>
+</html>
