@@ -33,7 +33,7 @@ const SECCIONES = {
   registrar: ['Registrar', 'Anota una venta'],
   caja: ['Caja', 'Venta del día'],
   buscar: ['Buscar', 'DNI, código o nombre'],
-  listas: ['Concursantes', 'Sus 20 entradas'],
+  listas: ['Concursantes', 'Crear y ver sus entradas'],
   mis: ['Mis entradas', 'Avance de tus ventas'],
   resumen: ['Resumen', 'Totales y caja']
 };
@@ -509,6 +509,8 @@ async function anular(id) {
 function prepararListas() {
   $('lSalida').classList.add('oculto');
   $('lGenerar').classList.toggle('oculto', sesion.rol !== 'Administrador');
+  $('lNuevo').classList.toggle('oculto', sesion.rol !== 'Administrador');
+  $('nError').textContent = '';
   const items = vendedores.filter(v => v.tipo === 'Concursante').map(v => ({ value: v.codigo, label: v.nombre, sub: v.codigo, v }));
   combo('lConc', items, { placeholder: 'Escribe un nombre', alElegir: it => armarLista(it.v.codigo), alLimpiar: () => $('lSalida').classList.add('oculto') });
 }
@@ -529,7 +531,36 @@ async function armarLista(cod) {
   $('lTexto').value = t;
   $('lWhats').href = 'https://wa.me/?text=' + encodeURIComponent(t);
   $('lProgreso').textContent = '';
+  $('lAcceso').classList.toggle('oculto', !r.clave);
+  if (r.clave) {
+    $('lClave').textContent = r.clave;
+    const m = `Hola ${r.nombre.split(' ')[0]}, para ver tus entradas de ${evento} entra a:\n${APP_URL}\nTu clave personal es: ${r.clave}\nNo la compartas.`;
+    $('lWhatsClave').href = 'https://wa.me/?text=' + encodeURIComponent(m);
+  }
   $('lSalida').classList.remove('oculto');
+}
+async function nuevoConcursante() {
+  const nombre = $('nNombre').value.trim().replace(/\s+/g, ' ');
+  const celular = $('nCel').value.replace(/\D/g, '');
+  const cupo = Number($('nCupo').value) || 20;
+  $('nError').textContent = '';
+  if (nombre.length < 3) { $('nError').textContent = 'Escribe el nombre completo'; return; }
+  if (celular && !/^9\d{8}$/.test(celular)) { $('nError').textContent = 'El celular debe tener 9 dígitos y empezar con 9'; return; }
+  if (cupo < 1 || cupo > 50) { $('nError').textContent = 'Entre 1 y 50 entradas'; return; }
+  if (!confirm('¿Crear a ' + nombre + ' con ' + cupo + ' entradas?')) return;
+  const btn = $('btnNuevo');
+  btn.disabled = true; btn.textContent = 'Creando…';
+  const r = await api('nuevoConcursante', { nombre, celular, cupo, opId: opId() });
+  btn.disabled = false; btn.textContent = 'Crear y asignar entradas';
+  if (!r.ok) { $('nError').textContent = r.error; return; }
+  aviso(r.nombre + ' creado como ' + r.codigo + ' con ' + r.cupo + ' entradas');
+  $('nNombre').value = ''; $('nCel').value = ''; $('nCupo').value = 20;
+  await cargarVendedores();
+  prepararListas();
+  const it = { value: r.codigo, label: r.nombre, sub: r.codigo };
+  $('lConc').innerHTML = `<div class="elegido"><div><b>${esc(it.label)}</b><small>${esc(it.sub)}</small></div><button type="button" onclick="prepararListas()">Cambiar</button></div>`;
+  await armarLista(r.codigo);
+  $('lAvance').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 async function generar() {
   if (!listaActual) return;

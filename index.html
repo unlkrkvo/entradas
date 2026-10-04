@@ -158,12 +158,33 @@
   <!-- Listas de concursantes -->
   <section id="v-listas" class="vista">
     <h2>Entradas por concursante</h2>
+    <div class="vidrio panel oculto" id="lNuevo">
+      <h3>Nuevo concursante</h3>
+      <p class="nota" style="margin-top:-4px">Se crea con su clave y recibe sus entradas de los códigos de reserva.</p>
+      <label for="nNombre">Nombre completo</label>
+      <input type="text" id="nNombre" autocomplete="off" autocapitalize="words" placeholder="Nombre y apellidos">
+      <div class="dos">
+        <div><label for="nCel">Celular (opcional)</label><input type="tel" id="nCel" inputmode="numeric" maxlength="9" placeholder="9XX XXX XXX"></div>
+        <div><label for="nCupo">Entradas</label><input type="number" id="nCupo" min="1" max="50" value="20"></div>
+      </div>
+      <button class="btn btn-oro" id="btnNuevo" onclick="nuevoConcursante()">Crear y asignar entradas</button>
+      <div class="error" id="nError"></div>
+    </div>
     <div class="vidrio panel">
       <span class="etiqueta" style="margin-top:0">Concursante</span>
       <div id="lConc"></div>
     </div>
     <div id="lSalida" class="oculto">
       <div class="vidrio panel" id="lAvance"></div>
+      <div class="vidrio panel oculto" id="lAcceso">
+        <h3>Acceso del concursante</h3>
+        <p class="nota" style="margin-top:-4px">Con esta clave ve sus entradas en la app. No puede registrar ni cambiar nada.</p>
+        <div class="codigo" id="lClave"></div>
+        <div class="fila-btn">
+          <a class="btn btn-vidrio" id="lWhatsClave" target="_blank" rel="noopener">Enviar clave por WhatsApp</a>
+          <button class="btn btn-vidrio" onclick="copiar(document.getElementById('lClave').textContent)">Copiar clave</button>
+        </div>
+      </div>
       <div class="vidrio panel">
         <h3>Sus entradas</h3>
         <p class="nota" style="margin-top:-4px">Toca un número para ver o enviar esa entrada.</p>
