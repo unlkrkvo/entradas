@@ -322,7 +322,7 @@ async function registrar() {
   const r = await api('registrar', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'));
+  hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'), r.numero);
 }
 
 // ---------- Caja ----------
@@ -345,11 +345,11 @@ async function venderCaja() {
   const r = await api('venderPuerta', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} con ${d.metodo}. ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'));
+  hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} con ${d.metodo}. ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'), r.numero);
 }
 
 // ---------- Venta completada ----------
-function hecho(id, nombre, cel, texto, otra) {
+function hecho(id, nombre, cel, texto, otra, n) {
   $('hTexto').textContent = texto;
   $('hCodigo').textContent = id;
   $('hDiseno').innerHTML = '<div class="esperando">Preparando la entrada...</div>';
@@ -358,7 +358,7 @@ function hecho(id, nombre, cel, texto, otra) {
   $('hWhats').href = 'https://wa.me/51' + cel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
   $('hOtra').onclick = otra;
   mostrar('hecho');
-  mostrarDiseno('hDiseno', id);
+  mostrarDiseno('hDiseno', id, n);
 }
 
 // ---------- Escáner ----------
@@ -454,13 +454,13 @@ function cerrarHoja() {
   $('velo').classList.remove('abierto');
   if (vistaActual === 'escanear' && !escaneando && lector) { try { lector.resume(); } catch (e) {} escaneando = true; clearTimeout(temporizador); }
 }
-async function verEntradaEnHoja(id, titulo, cel, nombre) {
+async function verEntradaEnHoja(id, titulo, cel, nombre, n) {
   abrirHoja('', `<h2 style="margin-top:0">${esc(titulo)}</h2><div id="hojaDiseno" class="disenio"><div class="esperando">Preparando la entrada...</div></div><div class="codigo">${esc(id)}</div>
     <button class="btn btn-oro" onclick="compartirEntrada()">Guardar o compartir</button>
     <div class="fila-btn"><button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button><button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button></div>
     ${cel ? `<button class="btn btn-vidrio" onclick="reenviar('${jsArg(id)}','${jsArg(nombre)}','${jsArg(cel)}')">Enviar el enlace por WhatsApp</button>` : ''}
     <button class="btn btn-vidrio" onclick="cerrarHoja()">Cerrar</button>`);
-  mostrarDiseno('hojaDiseno', id);
+  mostrarDiseno('hojaDiseno', id, n);
 }
 
 // ---------- Buscar ----------
@@ -486,7 +486,7 @@ async function buscar() {
         <small>${esc(x.vendedor)}${x.nLista ? ', N° ' + esc(x.nLista) : ''} · ${esc(x.id)}${x.horaIngreso ? ' · ingresó ' + esc(x.horaIngreso) : ''}</small></div>
         <span class="estado e-${esc(x.estado)}">${estadoTexto(x.estado)}</span></div>
       <div class="item-acciones">
-        ${x.estado !== 'Anulada' ? `<button onclick="verEntradaEnHoja('${jsArg(x.id)}','${jsArg(x.comprador || 'Entrada')}','${jsArg(x.celular)}','${jsArg(x.comprador)}')">Ver entrada</button>` : ''}
+        ${x.estado !== 'Anulada' ? `<button onclick="verEntradaEnHoja('${jsArg(x.id)}','${jsArg(x.comprador || 'Entrada')}','${jsArg(x.celular)}','${jsArg(x.comprador)}','${jsArg(x.nLista)}')">Ver entrada</button>` : ''}
         ${admin && x.estado !== 'Anulada' && x.estado !== 'Usada' ? `<button class="peligro" onclick="anular('${jsArg(x.id)}')">Anular</button>` : ''}
       </div>
     </li>`).join('');
@@ -521,7 +521,7 @@ async function armarLista(cod) {
   $('lAvance').innerHTML = htmlAvance(listaActual.qrs);
   $('lFichas').innerHTML = listaActual.qrs.map(x => {
     const clase = x.estado === 'Usada' ? 'usada' : x.comprador ? 'registrada' : 'libre';
-    return `<button type="button" class="ficha ${clase}" onclick="verEntradaEnHoja('${jsArg(x.id)}','Entrada N° ${jsArg(x.n)}')" aria-label="Entrada ${esc(x.n)}">${esc(x.n)}<small>${x.id.slice(0, 4)}</small></button>`;
+    return `<button type="button" class="ficha ${clase}" onclick="verEntradaEnHoja('${jsArg(x.id)}','Entrada N° ${jsArg(x.n)}','','','${jsArg(x.n)}')" aria-label="Entrada ${esc(x.n)}">${esc(x.n)}<small>${x.id.slice(0, 4)}</small></button>`;
   }).join('');
   const evento = sesion.config ? sesion.config.evento : 'el evento';
   let t = `Hola ${r.nombre.split(' ')[0]}, estos son tus códigos de entrada para ${evento}.\n` +
@@ -611,7 +611,7 @@ function pintarMis() {
       <small>${x.comprador ? esc(x.comprador) + (x.doc ? ' · Doc. ' + esc(x.doc) : '') : 'Aún sin comprador registrado'}</small>
       <small>${esc(x.id)}${x.metodo ? ' · ' + esc(x.metodo) : ''}${x.horaIngreso ? ' · ingresó ' + esc(x.horaIngreso) : ''}</small></div>
       <span class="estado e-${esc(x.estado)}">${estadoTexto(x.estado)}</span></div>
-      ${x.estado !== 'Anulada' ? `<div class="item-acciones"><button onclick="verEntradaEnHoja('${jsArg(x.id)}','${x.n ? 'Entrada N° ' + jsArg(x.n) : 'Entrada'}')">Ver entrada</button></div>` : ''}
+      ${x.estado !== 'Anulada' ? `<div class="item-acciones"><button onclick="verEntradaEnHoja('${jsArg(x.id)}','${x.n ? 'Entrada N° ' + jsArg(x.n) : 'Entrada'}','','','${jsArg(x.n)}')">Ver entrada</button></div>` : ''}
     </li>`).join('') : '<li class="nota">No hay entradas en este grupo.</li>';
 }
 
@@ -629,9 +629,14 @@ async function verResumen() {
 }
 
 // ---------- Diseño de la entrada ----------
-const PLANTILLA = 'entrada.jpg';
-const PLANTILLA_ANCHO = 941, PLANTILLA_ALTO = 1672;
-const CAJA_QR = { x: 371, y: 1266, w: 199, h: 196 };   // recuadro claro del diseño donde va el QR
+// Diseño de la entrada. Medidas en píxeles del original (4800 x 1944): se escalan solas.
+const PLANTILLA = 'Entrada_Inka_Fashion_QR_Numero_Codigo.png?v=4';
+const PLANTILLA_ANCHO = 4800, PLANTILLA_ALTO = 1944;
+const CAJA_QR = { x: 4116, y: 588, w: 536, h: 536 };   // recuadro blanco del talón
+const CAJA_NUM = { x: 4148, y: 1192, w: 96, h: 64 };   // casilla "N.º"
+const CAJA_COD = { x: 4308, y: 1192, w: 392, h: 64 };  // casilla del código de 10 caracteres
+const TINTA = '#3B2212';
+const FUENTE = 'Montserrat, "Segoe UI", Arial, sans-serif';
 
 function cargarPlantilla() {
   if (!plantillaPromesa) {
@@ -650,29 +655,62 @@ function matrizQR(texto) {
   for (let r = 0; r < n; r++) { const fila = []; for (let c = 0; c < n; c++) fila.push(m.isDark(r, c)); out.push(fila); }
   return out;
 }
-async function crearEntrada(id) {
+async function crearEntrada(id, n) {
   const img = await cargarPlantilla();
+  try { await document.fonts.load('700 40px Montserrat'); } catch (e) { /* usa la fuente de respaldo */ }
+  // La imagen puede venir en cualquier tamaño: se trabaja a 2000 px de ancho como máximo (liviana para WhatsApp)
+  const k = Math.min(1, 2000 / img.naturalWidth);
   const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
   const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
   const sx = cv.width / PLANTILLA_ANCHO, sy = cv.height / PLANTILLA_ALTO;
-  const B = { x: CAJA_QR.x * sx, y: CAJA_QR.y * sy, w: CAJA_QR.w * sx, h: CAJA_QR.h * sy };
+  const caja = k => ({ x: k.x * sx, y: k.y * sy, w: k.w * sx, h: k.h * sy });
+
+  // QR negro sobre blanco, centrado y con margen para que el lector lo capte fácil
+  const B = caja(CAJA_QR);
   ctx.fillStyle = '#FFFFFF'; ctx.fillRect(B.x, B.y, B.w, B.h);
-  const m = matrizQR(id), n = m.length;
-  const cel = Math.floor(Math.min(B.w, B.h) * 0.8 / n), lado = cel * n;
-  const x0 = Math.round(B.x + (B.w - lado) / 2), y0 = Math.round(B.y + B.h * 0.05);
+  if (!id) throw new Error('Esta entrada no tiene código. Vuelve a abrirla desde Buscar.');
+  const m = matrizQR(id), nm = m.length;
+  const cel = Math.max(1, Math.floor(Math.min(B.w, B.h) * 0.86 / nm)), lado = cel * nm;
+  const x0 = Math.round(B.x + (B.w - lado) / 2), y0 = Math.round(B.y + (B.h - lado) / 2);
   ctx.fillStyle = '#000000';
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c]) ctx.fillRect(x0 + c * cel, y0 + r * cel, cel, cel);
-  ctx.font = `bold ${Math.round(B.h * 0.085)}px ui-monospace, Menlo, Consolas, monospace`;
+  for (let r = 0; r < nm; r++) for (let c = 0; c < nm; c++) if (m[r][c]) ctx.fillRect(x0 + c * cel, y0 + r * cel, cel, cel);
+
+  ctx.fillStyle = TINTA;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(id, B.x + B.w / 2, B.y + B.h * 0.94);
+  // Escribe el texto centrado en la casilla, achicándolo si no entra
+  const centrar = (k, texto, ancho) => {
+    const b = caja(k);
+    let t = Math.round(b.h * 0.6);
+    ctx.font = `700 ${t}px ${FUENTE}`;
+    const w = ancho(texto);
+    if (w > b.w * 0.86) { t = Math.floor(t * b.w * 0.86 / w); ctx.font = `700 ${t}px ${FUENTE}`; }
+    const alto = ctx.measureText('H').actualBoundingBoxAscent || t * 0.72;
+    return { b, base: b.y + (b.h + alto) / 2 };
+  };
+
+  // Número de la entrada
+  const num = /^\d+$/.test(String(n || '').trim()) ? String(Number(n)).padStart(2, '0') : '';
+  if (num) {
+    const { b, base } = centrar(CAJA_NUM, num, t => ctx.measureText(t).width);
+    ctx.fillText(num, b.x + b.w / 2, base);
+  }
+
+  // Código de 10 caracteres, letra por letra con el mismo espacio (fácil de leer y dictar)
+  const letras = String(id).split('');
+  const paso = () => ctx.measureText('W').width * 1.1 * letras.length; // mismo tamaño en todas las entradas
+  const { b, base } = centrar(CAJA_COD, id, paso);
+  const avance = paso() / letras.length;
+  const xi = b.x + b.w / 2 - avance * (letras.length - 1) / 2;
+  letras.forEach((l, i) => ctx.fillText(l, xi + i * avance, base));
   return cv;
 }
-async function mostrarDiseno(idCont, id) {
+async function mostrarDiseno(idCont, id, n) {
   const cont = $(idCont);
   try {
-    const cv = await crearEntrada(id);
+    const cv = await crearEntrada(id, n);
     entradaActual = { id, cv };
     const im = document.createElement('img');
     im.alt = 'Entrada ' + id; im.src = cv.toDataURL('image/jpeg', 0.9);
@@ -713,7 +751,7 @@ async function lote(tipo, propias) {
     for (let i = 0; i < qrs.length; i++) {
       const q = qrs[i];
       prog.textContent = `Preparando entrada ${i + 1} de ${qrs.length}...`;
-      const cv = await crearEntrada(q.id);
+      const cv = await crearEntrada(q.id, q.n);
       const nombre = 'Entrada_' + String(q.n).padStart(2, '0') + '_' + q.id;
       if (zip) zip.file(nombre + '.jpg', await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.9)));
       else {
@@ -739,7 +777,7 @@ async function verTicket(id) {
   if (!r.ok || r.estado === 'Anulada') {
     $('tError').textContent = r.ok ? 'Esta entrada fue anulada. Comunícate con la organización.' : r.error;
     $('tDiseno').innerHTML = '';
-  } else if (await mostrarDiseno('tDiseno', id)) {
+  } else if (await mostrarDiseno('tDiseno', id, r.n)) {
     $('tBotones').classList.remove('oculto');
   }
   if (!r.ok) { ['tNombre', 'tDoc', 'tVend', 'tEstado'].forEach(k => $(k).textContent = '-'); return; }
