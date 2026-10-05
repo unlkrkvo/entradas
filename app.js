@@ -630,7 +630,7 @@ async function verResumen() {
 
 // ---------- Diseño de la entrada ----------
 // Diseño de la entrada. Medidas en píxeles del original (4800 x 1944): se escalan solas.
-const PLANTILLA = 'Entrada_Inka_Fashion_QR_Numero_Codigo.png?v=4';
+const PLANTILLA = 'entrada2.webp?v=4';
 const PLANTILLA_ANCHO = 4800, PLANTILLA_ALTO = 1944;
 const CAJA_QR = { x: 4116, y: 588, w: 536, h: 536 };   // recuadro blanco del talón
 const CAJA_NUM = { x: 4148, y: 1192, w: 96, h: 64 };   // casilla "N.º"
