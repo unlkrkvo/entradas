@@ -10,6 +10,7 @@ let lector = null, escaneando = false, ultimoCodigo = '', ultimoTiempo = 0, temp
 let registro = { vendedor: null, qrs: [], id: '' };
 let listaActual = null, misDatos = null, misFiltro = 'todas';
 let entradaActual = null, plantillaPromesa = null, busquedaTimer = null;
+let listaCache = null, vendedoresHora = 0;   // copias en memoria para navegar y buscar sin esperar
 
 // ---------- Íconos ----------
 const I = {
@@ -21,6 +22,7 @@ const I = {
   listas: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r="1.2"/><circle cx="4.8" cy="12" r="1.2"/><circle cx="4.8" cy="17.5" r="1.2"/>',
   mis: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5V9a2.5 2.5 0 0 0 0 5v1.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 15.5V14a2.5 2.5 0 0 0 0-5z"/><path d="M14 5v13" stroke-dasharray="2 2.5"/>',
   resumen: '<path d="M5 20v-8M11 20V5M17 20v-5M3 20h18"/>',
+  respaldo: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/>',
   ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   no: '<path d="M7 7l10 10M17 7L7 17"/>',
   alerta: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.5v.5"/>'
@@ -35,12 +37,13 @@ const SECCIONES = {
   buscar: ['Buscar', 'DNI, código o nombre'],
   listas: ['Concursantes', 'Crear y ver sus entradas'],
   mis: ['Mis entradas', 'Avance de tus ventas'],
-  resumen: ['Resumen', 'Totales y caja']
+  resumen: ['Resumen', 'Totales y caja'],
+  respaldo: ['Respaldo', 'Lista en tabla y PDF']
 };
 const ROLES = {
-  Administrador: { pestanas: ['inicio', 'escanear', 'registrar', 'buscar'], mosaico: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen'], inicio: 'inicio' },
-  Registro: { pestanas: ['inicio', 'registrar', 'buscar', 'listas'], mosaico: ['registrar', 'buscar', 'listas'], inicio: 'inicio' },
-  Caja: { pestanas: ['inicio', 'caja', 'mis', 'buscar'], mosaico: ['caja', 'mis', 'buscar'], inicio: 'inicio' },
+  Administrador: { pestanas: ['inicio', 'escanear', 'registrar', 'buscar'], mosaico: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen', 'respaldo'], inicio: 'inicio' },
+  Registro: { pestanas: ['inicio', 'registrar', 'buscar', 'listas'], mosaico: ['registrar', 'buscar', 'listas', 'respaldo'], inicio: 'inicio' },
+  Caja: { pestanas: ['inicio', 'caja', 'mis', 'buscar'], mosaico: ['caja', 'mis', 'buscar', 'respaldo'], inicio: 'inicio' },
   Puerta: { pestanas: [], mosaico: [], inicio: 'escanear' },
   Vendedor: { pestanas: [], mosaico: [], inicio: 'mis' }
 };
@@ -96,8 +99,9 @@ async function abrir(v) {
   if (v === 'inicio') { pintarInicio(); mostrar('inicio'); }
   if (v === 'escanear') { mostrar('escanear'); iniciarLector(); }
   if (v === 'registrar') { await cargarVendedores(); prepararRegistro(); mostrar('registrar'); }
+  if (v === 'respaldo') { mostrar('respaldo'); prepararRespaldo(); }
   if (v === 'caja') { prepararCaja(); mostrar('caja'); }
-  if (v === 'buscar') { mostrar('buscar'); setTimeout(() => $('bQ').focus(), 50); }
+  if (v === 'buscar') { mostrar('buscar'); setTimeout(() => $('bQ').focus(), 50); cargarLista().then(() => buscarEnVivo()); }
   if (v === 'listas') { await cargarVendedores(); prepararListas(); mostrar('listas'); }
   if (v === 'mis') { mostrar('mis'); cargarMis(); }
   if (v === 'resumen') { mostrar('resumen'); verResumen(); }
@@ -146,8 +150,11 @@ function iniciarSesion(clave, r) {
   $('subtituloMarca').textContent = NOMBRE_ROL[sesion.rol] || 'Control de entradas';
   pintarPestanas();
   abrir(ROLES[sesion.rol].inicio);
+  // Deja listos el diseño de la entrada y la letra para que la primera entrada salga al instante
+  if (sesion.rol !== 'Puerta') setTimeout(() => { cargarPlantilla().catch(() => {}); try { document.fonts.load('700 40px Montserrat'); } catch (e) {} }, 1500);
 }
 function salir() {
+  listaCache = null; vendedores = []; vendedoresHora = 0;
   detenerLector();
   sesion = null;
   try { localStorage.removeItem('clave'); } catch (e) {}
@@ -258,9 +265,26 @@ function validarLocal(d) {
 }
 
 // ---------- Registrar ----------
-async function cargarVendedores() {
-  const r = await api('vendedores');
-  if (r.ok) { vendedores = r.vendedores; sesion.precio = r.precio; }
+// Vendedores: se piden una vez y se reutilizan 5 minutos (se refrescan al crear un concursante)
+async function cargarVendedores(forzar) {
+  if (!forzar && vendedores.length && Date.now() - vendedoresHora < 300000) return;
+  const r = await api('vendedores', {}, vendedores.length > 0);
+  if (r.ok) { vendedores = r.vendedores; sesion.precio = r.precio; vendedoresHora = Date.now(); }
+}
+// Lista de entradas asignadas: alimenta la búsqueda instantánea y la lista de respaldo
+async function cargarLista(forzar) {
+  if (!forzar && listaCache && Date.now() - listaCache.t < 60000) return listaCache;
+  const r = await api('lista', {}, true);
+  if (r.ok) listaCache = { filas: r.filas, hora: r.hora, t: Date.now() };
+  else if (!listaCache) aviso(r.error);
+  return listaCache;
+}
+const normId = t => String(t || '').toUpperCase().replace(/0/g, 'O').replace(/1/g, 'I');
+const aEntrada = f => ({ id: f[0], nLista: f[1], comprador: f[2], doc: f[3], celular: f[4], vendedor: f[5], estado: f[6], horaIngreso: f[7] });
+function filtrarLista(q) {
+  if (!listaCache) return [];
+  const t = normal(q), d = q.toUpperCase().replace(/\s+/g, ''), k = normId(d);
+  return listaCache.filas.filter(f => normId(f[0]).includes(k) || (d.length >= 4 && (f[3].toUpperCase().includes(d) || f[4].includes(d))) || normal(f[2]).includes(t));
 }
 function prepararRegistro() {
   registro = { vendedor: null, qrs: [], id: '' };
@@ -393,7 +417,7 @@ function alLeer(texto) {
   validar(texto);
 }
 function validarManual() {
-  const c = $('codigoManual').value.trim().toUpperCase();
+  const c = $('codigoManual').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (c.length !== 10) { aviso('El código tiene 10 caracteres'); return; }
   escaneando = false;
   try { lector && lector.pause(true); } catch (e) {}
@@ -465,21 +489,21 @@ async function verEntradaEnHoja(id, titulo, cel, nombre, n) {
 
 // ---------- Buscar ----------
 function buscarEnVivo() {
-  clearTimeout(busquedaTimer);
   const q = $('bQ').value.trim();
   if (q.length < 3) { $('bEstado').textContent = 'Escribe al menos 3 caracteres.'; $('bPanel').classList.add('oculto'); return; }
-  $('bEstado').textContent = 'Buscando...';
-  busquedaTimer = setTimeout(buscar, 450);
+  if (!listaCache) { $('bEstado').textContent = 'Cargando entradas...'; cargarLista().then(() => listaCache && buscarEnVivo()); return; }
+  buscar();
 }
-async function buscar() {
+// Filtra en el celular, sin esperar al servidor
+function buscar() {
   const q = $('bQ').value.trim();
-  const r = await api('buscar', { q }, true);
-  if (q !== $('bQ').value.trim()) return;
-  if (!r.ok) { $('bEstado').textContent = r.error; return; }
-  $('bEstado').textContent = r.resultados.length ? r.resultados.length + ' resultado' + (r.resultados.length > 1 ? 's' : '') : 'Sin resultados para "' + q + '".';
-  $('bPanel').classList.toggle('oculto', !r.resultados.length);
+  if (q.length < 3) return;
+  const todos = filtrarLista(q), res = todos.slice(0, 50).map(aEntrada);
+  $('bEstado').innerHTML = (todos.length ? todos.length + ' resultado' + (todos.length > 1 ? 's' : '') + (todos.length > 50 ? ' (se muestran 50)' : '') : 'Sin resultados para "' + esc(q) + '".') +
+    ` · datos de las ${esc(listaCache.hora.slice(-5))} <button type="button" class="enlace" onclick="actualizarBusqueda()">Actualizar</button>`;
+  $('bPanel').classList.toggle('oculto', !res.length);
   const admin = sesion.rol === 'Administrador';
-  $('bResultados').innerHTML = r.resultados.map(x => `
+  $('bResultados').innerHTML = res.map(x => `
     <li>
       <div class="item-cab"><div><b>${esc(x.comprador) || 'Sin datos del comprador'}</b>
         <small>${x.doc ? 'Doc. ' + esc(x.doc) + ' · ' : ''}${x.celular ? 'Cel. ' + esc(x.celular) : ''}</small>
@@ -491,6 +515,7 @@ async function buscar() {
       </div>
     </li>`).join('');
 }
+async function actualizarBusqueda() { await cargarLista(true); buscarEnVivo(); }
 const estadoTexto = e => ({ Generada: 'Sin registrar', Entregada: 'Registrada', Usada: 'Ingresó', Anulada: 'Anulada' }[e] || e);
 function reenviar(id, nombre, cel) {
   const msg = `Hola${nombre ? ' ' + nombre.split(' ')[0] : ''}, esta es tu entrada:\n${APP_URL}?t=${id}`;
@@ -502,7 +527,8 @@ async function anular(id) {
   if (!confirm('Se anulará ' + id + ' y ya no podrá ingresar. ¿Continuar?')) return;
   const r = await api('anular', { id, motivo });
   aviso(r.ok ? 'Entrada anulada' : r.error);
-  buscar();
+  await cargarLista(true);
+  buscarEnVivo();
 }
 
 // ---------- Entradas por concursante (administración) ----------
@@ -555,7 +581,7 @@ async function nuevoConcursante() {
   if (!r.ok) { $('nError').textContent = r.error; return; }
   aviso(r.nombre + ' creado como ' + r.codigo + ' con ' + r.cupo + ' entradas');
   $('nNombre').value = ''; $('nCel').value = ''; $('nCupo').value = 20;
-  await cargarVendedores();
+  await cargarVendedores(true);
   prepararListas();
   const it = { value: r.codigo, label: r.nombre, sub: r.codigo };
   $('lConc').innerHTML = `<div class="elegido"><div><b>${esc(it.label)}</b><small>${esc(it.sub)}</small></div><button type="button" onclick="prepararListas()">Cambiar</button></div>`;
@@ -767,6 +793,58 @@ async function lote(tipo, propias) {
   } catch (e) {
     prog.textContent = 'No se pudo generar: ' + e.message;
   }
+}
+
+// ---------- Lista de respaldo (por si cae el internet en la puerta) ----------
+async function prepararRespaldo() {
+  $('rpVolver').classList.toggle('oculto', sesion.rol !== 'Puerta');
+  $('rpEstado').textContent = 'Cargando entradas...';
+  await cargarLista(true);
+  pintarRespaldo();
+}
+function filasRespaldo() {
+  const q = $('rpQ').value.trim();
+  const filas = q.length >= 2 ? filtrarLista(q) : (listaCache ? listaCache.filas.slice() : []);
+  return filas.sort((a, b) => a[0].localeCompare(b[0]));
+}
+function pintarRespaldo() {
+  if (!listaCache) { $('rpEstado').textContent = 'No se pudo cargar la lista. Revisa tu conexión.'; return; }
+  const filas = filasRespaldo(), max = 300;
+  const total = listaCache.filas.length, ing = listaCache.filas.filter(f => f[6] === 'Usada').length;
+  $('rpEstado').textContent = `${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${listaCache.hora.slice(-5)}` +
+    (filas.length > max ? ` · se muestran ${max} de ${filas.length}, el PDF trae todas` : '');
+  $('rpCuerpo').innerHTML = filas.slice(0, max).map(f => `<tr class="${f[6] === 'Anulada' ? 'anulada' : ''}">
+    <td class="mono">${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2]) || '—'}</td><td>${esc(f[3]) || '—'}</td><td>${esc(f[5])}</td><td>${estadoTexto(f[6])}</td></tr>`).join('') ||
+    '<tr><td colspan="6">Sin entradas para mostrar.</td></tr>';
+}
+function descargarRespaldo() {
+  if (!listaCache) return;
+  const filas = filasRespaldo();
+  const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const cols = [['Código', 32], ['N.º', 12], ['Comprador', 78], ['Documento', 28], ['Vendedor', 62], ['Estado', 30], ['Visto', 15]];
+  const x0 = 12, alto = 6.4, porPag = 27, paginas = Math.max(1, Math.ceil(filas.length / porPag));
+  const evento = sesion.config ? sesion.config.evento : 'Inka Fashion Perú';
+  const corta = (t, w) => { t = String(t || ''); while (t && pdf.getTextWidth(t) > w - 3) t = t.slice(0, -1); return t; };
+  for (let p = 0; p < paginas; p++) {
+    if (p) pdf.addPage();
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
+    pdf.text('Lista de respaldo · ' + evento, x0, 13);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
+    pdf.text(`Generada ${listaCache.hora} · ${filas.length} entradas · ordenadas por código · página ${p + 1} de ${paginas}`, x0, 18.5);
+    let y = 25, x = x0;
+    pdf.setFillColor(36, 24, 46); pdf.rect(x0, y - 4.6, 257, alto, 'F');
+    pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+    cols.forEach(c => { pdf.text(c[0], x + 1.5, y); x += c[1]; });
+    pdf.setTextColor(30, 20, 15); pdf.setFont('helvetica', 'normal');
+    filas.slice(p * porPag, (p + 1) * porPag).forEach((f, i) => {
+      y += alto; x = x0;
+      if (i % 2) { pdf.setFillColor(244, 238, 228); pdf.rect(x0, y - 4.6, 257, alto, 'F'); }
+      const v = [f[0], f[1], f[2] || '—', f[3] || '—', f[5], estadoTexto(f[6]), ''];
+      pdf.setFont(f[6] === 'Anulada' ? 'helvetica' : 'helvetica', f[6] === 'Anulada' ? 'bold' : 'normal');
+      cols.forEach((c, k) => { if (k === 6) pdf.rect(x + 5, y - 3.4, 4, 4); else pdf.text(corta(v[k], c[1]), x + 1.5, y); x += c[1]; });
+    });
+  }
+  pdf.save('Lista_respaldo_' + listaCache.hora.replace(/[\/: ]/g, '-') + '.pdf');
 }
 
 // ---------- Entrada pública ----------

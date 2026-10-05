@@ -269,3 +269,12 @@ textarea { min-height: 150px; font-size: 14px; line-height: 1.5; }
   .mosaico { grid-template-columns: repeat(3, 1fr); }
   .mosaico .ancho { grid-column: span 3; }
 }
+
+/* ---------- Lista de respaldo y enlaces pequeños ---------- */
+.tabla-caja { padding: 6px; overflow-x: auto; margin-top: 10px; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; min-width: 640px; }
+.tabla th { text-align: left; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--oro-claro); padding: 10px 8px; border-bottom: 1px solid var(--borde-vidrio); position: sticky; top: 0; }
+.tabla td { padding: 9px 8px; border-bottom: 1px solid rgba(255, 255, 255, .07); color: var(--marfil); vertical-align: top; }
+.tabla tr.anulada td { color: var(--cochinilla); text-decoration: line-through; }
+.tabla .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .06em; white-space: nowrap; }
+button.enlace { background: none; border: 0; padding: 0; color: var(--oro-claro); font: inherit; text-decoration: underline; cursor: pointer; }

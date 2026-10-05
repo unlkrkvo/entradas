@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=3">
+<link rel="stylesheet" href="estilos.css?v=4">
 </head>
 <body>
 <div class="fondo" aria-hidden="true"><div class="patron"></div></div>
@@ -94,6 +94,7 @@
       <button onclick="validarManual()">Validar</button>
     </div>
     <p class="nota">Apunta la cámara al QR. El resultado aparece abajo y la cámara sigue lista para el siguiente.</p>
+    <button class="btn btn-vidrio" onclick="abrir('respaldo')">Lista de respaldo (sin internet)</button>
   </section>
 
   <!-- Registrar -->
@@ -231,6 +232,24 @@
   </section>
 
   <!-- Resumen -->
+  <section id="v-respaldo" class="vista">
+    <h2>Lista de respaldo</h2>
+    <p class="nota" style="margin-top:-6px">Descárgala con internet antes de abrir la puerta. Si se cae la señal, busca ahí el código o el DNI y marca la casilla "Visto".</p>
+    <div class="fila-btn">
+      <button class="btn btn-oro" onclick="descargarRespaldo()">Descargar PDF</button>
+      <button class="btn btn-vidrio" onclick="prepararRespaldo()">Actualizar</button>
+    </div>
+    <input type="search" id="rpQ" placeholder="Filtrar por código, DNI o nombre" autocomplete="off" oninput="pintarRespaldo()">
+    <p class="nota" id="rpEstado"></p>
+    <div class="vidrio panel tabla-caja">
+      <table class="tabla">
+        <thead><tr><th>Código</th><th>N.º</th><th>Comprador</th><th>Documento</th><th>Vendedor</th><th>Estado</th></tr></thead>
+        <tbody id="rpCuerpo"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-vidrio oculto" id="rpVolver" onclick="abrir('escanear')">Volver al escáner</button>
+  </section>
+
   <section id="v-resumen" class="vista">
     <h2>Resumen del evento</h2>
     <div id="resDatos"></div>
@@ -245,10 +264,10 @@
 <div class="toast vidrio" id="toast" role="status"></div>
 <div class="cargando" id="cargando"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="app.js?v=4"></script>
+<script src="lib/qrcode.min.js"></script>
+<script src="lib/html5-qrcode.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
