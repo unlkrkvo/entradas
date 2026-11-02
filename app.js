@@ -225,12 +225,25 @@ function htmlComprador(p) {
     <input type="tel" id="${p}Cel" inputmode="numeric" maxlength="9" placeholder="9XX XXX XXX">
     <p class="nota">Para menores de edad, usa el DNI del adulto que lo acompaña.</p>`;
 }
-function htmlPago(p, monto, editable, conRegalo) {
+// Precio de venta: se recuerda el último que usaste en este equipo (30, 35, 40...)
+const PRECIOS_RAPIDOS = [30, 35, 40];
+function precioSugerido() {
+  try { const v = Number(localStorage.getItem('precioVenta')); if (v > 0) return v; } catch (e) {}
+  return PRECIOS_RAPIDOS[0];
+}
+function recordarPrecio(m) { try { if (Number(m) > 0) localStorage.setItem('precioVenta', String(Number(m))); } catch (e) {} }
+function elegirPrecio(p, v) {
+  $(p + 'Monto').value = v;
+  document.querySelectorAll('#' + p + 'Precios button').forEach(b => b.classList.toggle('sel', Number(b.dataset.v) === v));
+}
+function htmlPago(p, monto, editable, conRegalo, rapidos) {
   const metodos = ['Efectivo', 'Yape', 'Plin', 'Transferencia'].concat(conRegalo ? ['Regalo'] : []);
   return `
+    ${rapidos ? `<span class="etiqueta" style="margin-top:0">Precio de la entrada</span>
+    <div class="segmentos" id="${p}Precios">${PRECIOS_RAPIDOS.map(v => `<button type="button" data-v="${v}" class="${Number(monto) === v ? 'sel' : ''}" onclick="elegirPrecio('${p}', ${v})">S/ ${v}</button>`).join('')}</div>` : ''}
     <div class="dos">
-      <div><label for="${p}Monto">Monto (S/)</label>
-        <input type="number" id="${p}Monto" inputmode="decimal" min="0" step="0.5" value="${monto}" ${editable ? '' : 'readonly'}></div>
+      <div><label for="${p}Monto">${rapidos ? 'Otro monto (S/)' : 'Monto (S/)'}</label>
+        <input type="number" id="${p}Monto" inputmode="decimal" min="0" step="0.5" value="${monto}" ${editable ? '' : 'readonly'}${rapidos ? ` oninput="document.querySelectorAll('#${p}Precios button').forEach(b => b.classList.toggle('sel', b.dataset.v === this.value))"` : ''}></div>
       <div id="${p}OperBloque" class="oculto"><label for="${p}Oper">Código de operación</label>
         <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Del comprobante"></div>
     </div>
@@ -245,7 +258,7 @@ function elegirMetodo(p, b) {
   $(p + 'OperBloque').classList.toggle('oculto', !['Yape', 'Plin', 'Transferencia'].includes(m));
   const monto = $(p + 'Monto');
   if (m === 'Regalo (sin pago)' && !monto.readOnly) monto.value = 0;
-  else if (!monto.readOnly && Number(monto.value) === 0) monto.value = sesion.precio || '';
+  else if (!monto.readOnly && Number(monto.value) === 0) monto.value = precioSugerido();
 }
 function leerComprador(p) {
   return { nombre: $(p + 'Nombre').value, tipoDoc: $(p + 'TipoDoc').value, doc: $(p + 'Doc').value, celular: $(p + 'Cel').value };
@@ -304,8 +317,8 @@ async function elegirVendedor(v) {
   const esConc = v.tipo === 'Concursante';
   $('bloqueComprador').innerHTML = htmlComprador('r');
   $('bloquePago').innerHTML = esConc
-    ? '<p class="nota" style="margin-top:-4px">Lo que pagó el comprador al concursante. Si fue un regalo, elige Regalo.</p>' + htmlPago('r', sesion.precio, true, true)
-    : htmlPago('r', sesion.precio, false, false);
+    ? '<p class="nota" style="margin-top:-4px">Lo que pagó el comprador al concursante. Si fue un regalo, elige Regalo.</p>' + htmlPago('r', precioSugerido(), true, true, true)
+    : htmlPago('r', precioSugerido(), true, false, true);
   $('rDatos').classList.remove('oculto');
   $('bloqueQR').classList.toggle('oculto', !esConc);
   if (esConc) {
@@ -340,21 +353,21 @@ async function registrar() {
   const esConc = v.tipo === 'Concursante';
   const d = Object.assign({ vendedor: v.codigo }, leerComprador('r'), leerPago('r'));
   if (esConc) { d.id = registro.id; if (!d.id) { err.textContent = 'Elige cuál de sus entradas entregó'; return; } }
-  const e = validarLocal(d);
+  const e = validarLocal(d) || (!esConc && !(Number(d.monto) > 0) ? 'Elige el precio de la entrada' : '');
   if (e) { err.textContent = e; return; }
   const btn = $('btnRegistrar'); d.opId = btn.dataset.op; btn.disabled = true;
   const r = await api('registrar', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
+  if (d.metodo !== 'Regalo (sin pago)') recordarPrecio(d.monto);
   hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'), r.numero);
 }
 
 // ---------- Caja ----------
 function prepararCaja() {
-  const precio = sesion.config ? sesion.config.precioDia : 30;
   $('bloqueCompradorCaja').innerHTML = htmlComprador('c');
-  $('bloquePagoCaja').innerHTML = htmlPago('c', precio, false, false);
-  $('btnCaja').textContent = 'Cobrar S/ ' + precio + ' y registrar';
+  $('bloquePagoCaja').innerHTML = htmlPago('c', precioSugerido(), true, false, true);
+  $('btnCaja').textContent = 'Cobrar y registrar';
   $('cError').textContent = '';
   $('cIngresa').checked = true;
   $('btnCaja').dataset.op = opId();
@@ -362,13 +375,14 @@ function prepararCaja() {
 async function venderCaja() {
   const err = $('cError'); err.textContent = '';
   const d = Object.assign({}, leerComprador('c'), leerPago('c'));
-  const e = validarLocal(d);
+  const e = validarLocal(d) || (Number(d.monto) > 0 ? '' : 'Elige el precio de la entrada');
   if (e) { err.textContent = e; return; }
   d.ingresaAhora = $('cIngresa').checked;
   const btn = $('btnCaja'); d.opId = btn.dataset.op; btn.disabled = true;
   const r = await api('venderPuerta', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
+  recordarPrecio(d.monto);
   hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} con ${d.metodo}. ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'), r.numero);
 }
 
