@@ -280,3 +280,31 @@ textarea { min-height: 150px; font-size: 14px; line-height: 1.5; }
 button.enlace { background: none; border: 0; padding: 0; color: var(--oro-claro); font: inherit; text-decoration: underline; cursor: pointer; }
 a.enlace-texto { color: var(--oro-claro); text-decoration: underline; }
 #lCompartir { margin-top: 12px; flex-wrap: wrap; }
+
+/* ---------- Varios eventos ---------- */
+:root { --ev: #E2B657; }
+.isla { flex-direction: column; align-items: center; gap: 8px; }
+.banda-evento { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 18px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ev) 55%, #140E1A), color-mix(in srgb, var(--ev) 25%, #140E1A));
+  border: 1px solid color-mix(in srgb, var(--ev) 70%, transparent); box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .8); }
+.banda-evento i { width: 14px; height: 14px; border-radius: 50%; background: var(--ev); box-shadow: 0 0 0 3px rgba(255, 255, 255, .25); flex: none; }
+.banda-evento div { flex: 1; min-width: 0; }
+.banda-evento b { display: block; font-size: 17px; letter-spacing: .02em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banda-evento small { display: block; font-size: 12px; color: rgba(255, 255, 255, .8); }
+.banda-evento button { flex: none; border: 1px solid rgba(255, 255, 255, .45); background: rgba(0, 0, 0, .25); color: #fff; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 600; }
+.eventos-login { display: grid; gap: 8px; margin: 8px 0 14px; }
+.ev-opcion { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 16px;
+  border: 2px solid rgba(255, 236, 200, .16); background: rgba(10, 6, 14, .35); color: var(--marfil); }
+.ev-opcion i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--c); flex: none; }
+.ev-opcion b { display: block; font-size: 16px; }
+.ev-opcion small { display: block; font-size: 12.5px; color: var(--marfil-suave); }
+.ev-opcion.sel { border-color: var(--c); background: color-mix(in srgb, var(--c) 28%, rgba(10, 6, 14, .5)); }
+.ev-opcion.sel i { background: var(--c); box-shadow: inset 0 0 0 3px rgba(20, 14, 26, .7); }
+.ev-grande { margin: 4px 0 12px; padding: 12px 14px; border-radius: 16px; text-align: center; font-size: 26px; font-weight: 800; letter-spacing: .02em;
+  color: #fff; background: var(--c); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); text-shadow: 0 1px 2px rgba(0, 0, 0, .45); }
+.aviso-otro { color: #FFD28A; }
+.ticket-evento { text-align: center; margin: 0 0 12px; padding: 10px 12px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--ev) 60%, transparent); }
+.ticket-evento b { display: block; font-size: 16px; color: var(--marfil); }
+.ticket-evento span { display: block; font-size: 13px; color: var(--marfil-suave); }
+.ganador { margin-top: 14px; text-align: center; }
+.ganador-num { font-family: var(--display); font-size: 44px; color: var(--oro-claro); line-height: 1.1; margin-top: 6px; }

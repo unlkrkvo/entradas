@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#140E1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Inka Fashion Perú · Entradas</title>
+<title>Entradas · Inka Fashion, India Fest y Emprende Kids</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=5">
+<link rel="stylesheet" href="estilos.css?v=6">
 </head>
 <body>
 <div class="fondo" aria-hidden="true"><div class="patron"></div></div>
@@ -22,13 +22,18 @@
   <div class="isla-cuerpo vidrio">
     <a class="marca" href="./" aria-label="Inicio">
       <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <span class="marca-texto">Inka Fashion Perú<small id="subtituloMarca">Control de entradas</small></span>
+      <span class="marca-texto">Entradas<small id="subtituloMarca">Control de entradas</small></span>
     </a>
     <button class="avatar oculto" id="avatar" aria-label="Mi cuenta" aria-expanded="false" onclick="alternarMenu()"></button>
   </div>
   <div class="menu-usuario vidrio oculto" id="menuUsuario">
     <p><b id="menuNombre"></b><span id="menuRol"></span></p>
     <button class="btn btn-vidrio" style="margin-top:0" onclick="salir()">Cerrar sesión</button>
+  </div>
+  <div class="banda-evento oculto" id="bandaEvento" role="status">
+    <i aria-hidden="true"></i>
+    <div><b id="bandaNombre"></b><small id="bandaDetalle"></small></div>
+    <button type="button" onclick="cambiarEvento()">Cambiar evento</button>
   </div>
 </header>
 
@@ -37,6 +42,7 @@
   <!-- Entrada pública del comprador -->
   <section id="v-ticket" class="vista" aria-labelledby="tTitulo">
     <h1 id="tTitulo" class="sr">Tu entrada</h1>
+    <div id="tEvento" class="ticket-evento oculto"></div>
     <div id="tDiseno" class="disenio"><div class="esperando">Preparando tu entrada...</div></div>
     <div class="error" id="tError" style="text-align:center"></div>
     <div id="tBotones" class="oculto">
@@ -61,11 +67,13 @@
   <section id="v-login" class="vista">
     <div class="portada">
       <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <h1>Inka Fashion Perú</h1>
-      <p>Entradas del Concurso Internacional de Moda Peruana</p>
+      <h1>Control de entradas</h1>
+      <p>Inka Fashion Perú · India Fest · Emprende Kids</p>
     </div>
     <div class="vidrio panel">
-      <label for="clave" style="text-align:center">Tu clave personal</label>
+      <span class="etiqueta" style="margin-top:0;text-align:center;display:block">1. Elige el evento</span>
+      <div class="eventos-login" id="eventosLogin" role="group" aria-label="Evento"></div>
+      <label for="clave" style="text-align:center">2. Tu clave personal</label>
       <div class="clave"><input id="clave" type="password" autocomplete="off" inputmode="numeric" placeholder="••••••"></div>
       <button class="btn btn-oro" onclick="entrar()">Entrar</button>
       <div class="error" id="loginError" style="text-align:center"></div>
@@ -257,6 +265,14 @@
     <button class="btn btn-vidrio" onclick="verResumen()">Actualizar</button>
   </section>
 
+  <!-- Sorteo (solo Administración) -->
+  <section id="v-sorteo" class="vista">
+    <h2>Sorteo · <span id="sEvento"></span></h2>
+    <p class="nota" style="margin-top:-6px">Elige al azar una entrada que ya ingresó a este evento. Los ganadores no se repiten.</p>
+    <button class="btn btn-oro" id="btnSortear" onclick="sortear()">Sortear</button>
+    <div id="sResultado"></div>
+  </section>
+
 </main>
 
 <nav class="pestanas vidrio oculto" id="pestanas" aria-label="Secciones"></nav>
@@ -269,6 +285,6 @@
 <script src="lib/html5-qrcode.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jszip.min.js"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

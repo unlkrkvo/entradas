@@ -1,10 +1,13 @@
-/* Inka Fashion Perú · Control de entradas */
+/* Control de entradas · Inka Fashion Perú, India Fest y Emprende Kids */
 'use strict';
 
 const API = 'https://script.google.com/macros/s/AKfycbzNQTpl4UMnX8DPNTzuEgMbdmjvNK06GRHC7STFHKR8fTZYtsqFBvA6y4d3yazzVVWc4w/exec';
 const APP_URL = location.origin + location.pathname;
 
 let sesion = null;          // { clave, nombre, rol, codigo, config, precio }
+let evento = null;          // evento con el que se entró (se elige cada vez al iniciar sesión)
+let eventoElegido = '';     // botón marcado en la pantalla de ingreso (nunca viene marcado)
+let eventosLista = [];      // eventos para la pantalla de ingreso
 let vendedores = [];
 let lector = null, escaneando = false, ultimoCodigo = '', ultimoTiempo = 0, temporizador = null;
 let registro = { vendedor: null, qrs: [], id: '' };
@@ -25,7 +28,8 @@ const I = {
   respaldo: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/>',
   ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   no: '<path d="M7 7l10 10M17 7L7 17"/>',
-  alerta: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.5v.5"/>'
+  alerta: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.5v.5"/>',
+  sorteo: '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-1.5-3-5-4-5-1.5S10 9 12 9zM12 9c1.5-3 5-4 5-1.5S14 9 12 9z"/>'
 };
 const icono = (n, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${I[n]}</svg>`;
 
@@ -38,10 +42,11 @@ const SECCIONES = {
   listas: ['Concursantes', 'Crear y ver sus entradas'],
   mis: ['Mis entradas', 'Avance de tus ventas'],
   resumen: ['Resumen', 'Totales y caja'],
-  respaldo: ['Respaldo', 'Lista en tabla y PDF']
+  respaldo: ['Respaldo', 'Lista en tabla y PDF'],
+  sorteo: ['Sortear', 'Premio entre los que ingresaron']
 };
 const ROLES = {
-  Administrador: { pestanas: ['inicio', 'escanear', 'registrar', 'buscar'], mosaico: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen', 'respaldo'], inicio: 'inicio' },
+  Administrador: { pestanas: ['inicio', 'escanear', 'registrar', 'buscar'], mosaico: ['escanear', 'registrar', 'caja', 'buscar', 'listas', 'resumen', 'respaldo', 'sorteo'], inicio: 'inicio' },
   Registro: { pestanas: ['inicio', 'registrar', 'buscar', 'listas'], mosaico: ['registrar', 'buscar', 'listas', 'respaldo'], inicio: 'inicio' },
   Caja: { pestanas: ['inicio', 'caja', 'mis', 'buscar'], mosaico: ['caja', 'mis', 'buscar', 'respaldo'], inicio: 'inicio' },
   Puerta: { pestanas: [], mosaico: [], inicio: 'escanear' },
@@ -72,7 +77,7 @@ function bajar(blob, nombre) {
 async function api(accion, datos = {}, silencioso = false) {
   if (!silencioso) $('cargando').classList.add('si');
   try {
-    const cuerpo = Object.assign({ accion, clave: sesion ? sesion.clave : '' }, datos);
+    const cuerpo = Object.assign({ accion, clave: sesion ? sesion.clave : '', evento: evento ? evento.clave : eventoElegido }, datos);
     const r = await fetch(API, { method: 'POST', body: JSON.stringify(cuerpo) });
     const j = await r.json();
     if (j.sesion === false && sesion && sesion.nombre) { salir(); aviso('Tu clave ya no es válida. Ingresa de nuevo.'); }
@@ -105,9 +110,12 @@ async function abrir(v) {
   if (v === 'listas') { await cargarVendedores(); prepararListas(); mostrar('listas'); }
   if (v === 'mis') { mostrar('mis'); cargarMis(); }
   if (v === 'resumen') { mostrar('resumen'); verResumen(); }
+  if (v === 'sorteo') { prepararSorteo(); mostrar('sorteo'); }
 }
+// Secciones que se ven en el evento elegido (Concursantes solo existe en Inka Fashion)
+const visibles = lista => lista.filter(v => v !== 'listas' || (evento && evento.concursantes));
 function pintarPestanas() {
-  const p = ROLES[sesion.rol].pestanas, nav = $('pestanas');
+  const p = visibles(ROLES[sesion.rol].pestanas), nav = $('pestanas');
   nav.classList.toggle('oculto', !p.length);
   nav.innerHTML = p.map(v => `<button data-v="${v}" onclick="abrir('${v}')">${icono(v)}<span>${SECCIONES[v][0]}</span></button>`).join('');
 }
@@ -115,8 +123,8 @@ function pintarInicio() {
   const r = ROLES[sesion.rol];
   const hora = new Date().getHours();
   $('saludo').textContent = (hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches') + ', ' + sesion.nombre.split(' ')[0];
-  $('saludoRol').textContent = NOMBRE_ROL[sesion.rol];
-  const m = r.mosaico;
+  $('saludoRol').textContent = NOMBRE_ROL[sesion.rol] + ' · ' + evento.corto;
+  const m = visibles(r.mosaico);
   $('mosaico').innerHTML = m.map((v, i) => `<button class="vidrio${i === 0 && m.length % 2 ? ' ancho' : ''}" onclick="abrir('${v}')">${icono(v)}<div><b>${SECCIONES[v][0]}</b><span>${SECCIONES[v][1]}</span></div></button>`).join('');
   if (sesion.rol === 'Administrador') cifrasInicio();
 }
@@ -130,17 +138,53 @@ async function cifrasInicio() {
 }
 
 // ---------- Sesión ----------
+// Pantalla de ingreso: el evento se elige SIEMPRE, ningún botón viene marcado
+const EVENTOS_RESPALDO = [
+  { clave: 'INKA', corto: 'Inka Fashion', marca: 'Inka Fashion Perú', color: '#E2B657', fechaTexto: 'domingo 31 de enero', horario: '11:00 a.m. a 8:00 p.m.' },
+  { clave: 'INDIA', corto: 'India Fest', marca: 'Expomundo', color: '#C8102E', fechaTexto: 'sábado 30 de enero', horario: '3:00 p.m. a 8:00 p.m.' },
+  { clave: 'KIDS', corto: 'Emprende Kids', marca: 'Emprende Kids y Teens', color: '#1E9E5A', fechaTexto: 'sábado 30 de enero', horario: '9:00 a.m. a 1:00 p.m.' }
+];
+async function cargarEventosLogin() {
+  if (!eventosLista.length) {
+    pintarEventosLogin(EVENTOS_RESPALDO);
+    const r = await api('eventos', {}, true);
+    eventosLista = r.ok && r.eventos.length ? r.eventos : EVENTOS_RESPALDO;
+  }
+  pintarEventosLogin(eventosLista);
+}
+function pintarEventosLogin(lista) {
+  $('eventosLogin').innerHTML = lista.map(e => `<button type="button" class="ev-opcion${eventoElegido === e.clave ? ' sel' : ''}" style="--c:${esc(e.color)}" aria-pressed="${eventoElegido === e.clave}" onclick="elegirEventoLogin('${jsArg(e.clave)}')">
+    <i aria-hidden="true"></i><span><b>${esc(e.corto)}</b><small>${esc(e.fechaTexto)} · ${esc(e.horario)}</small></span></button>`).join('');
+}
+function elegirEventoLogin(clave) {
+  eventoElegido = clave;
+  $('loginError').textContent = '';
+  pintarEventosLogin(eventosLista.length ? eventosLista : EVENTOS_RESPALDO);
+  const c = $('clave'); if (!c.value) c.focus();
+}
+function pantallaIngreso(mensaje) {
+  eventoElegido = '';
+  try { $('clave').value = localStorage.getItem('clave') || ''; } catch (e) {}
+  $('loginError').textContent = mensaje || '';
+  mostrar('login');
+  cargarEventosLogin();
+}
 async function entrar() {
   const clave = $('clave').value.trim(), err = $('loginError');
   err.textContent = '';
+  if (!eventoElegido) { err.textContent = 'Primero elige el evento'; return; }
   if (!clave) { err.textContent = 'Escribe tu clave'; return; }
   sesion = { clave };
+  evento = null;
   const r = await api('login');
   if (!r.ok) { sesion = null; err.textContent = r.error; return; }
   iniciarSesion(clave, r);
 }
 function iniciarSesion(clave, r) {
   sesion = { clave, nombre: r.nombre, rol: r.rol, codigo: r.codigo || '', config: r.config };
+  evento = r.evento;
+  eventoElegido = '';
+  plantillas = {};
   try { localStorage.setItem('clave', clave); } catch (e) {}
   $('clave').value = '';
   $('avatar').textContent = sesion.nombre.trim().charAt(0).toUpperCase();
@@ -148,21 +192,43 @@ function iniciarSesion(clave, r) {
   $('menuNombre').textContent = sesion.nombre;
   $('menuRol').textContent = NOMBRE_ROL[sesion.rol] || sesion.rol;
   $('subtituloMarca').textContent = NOMBRE_ROL[sesion.rol] || 'Control de entradas';
+  pintarBandaEvento();
   pintarPestanas();
   abrir(ROLES[sesion.rol].inicio);
   // Deja listos el diseño de la entrada y la letra para que la primera entrada salga al instante
   if (sesion.rol !== 'Puerta') setTimeout(() => { cargarPlantilla().catch(() => {}); try { document.fonts.load('700 40px Montserrat'); } catch (e) {} }, 1500);
 }
-function salir() {
-  listaCache = null; vendedores = []; vendedoresHora = 0;
+// Franja arriba con el evento elegido: siempre visible dentro de la app
+function pintarBandaEvento() {
+  const b = $('bandaEvento');
+  if (!evento) { b.classList.add('oculto'); document.documentElement.style.removeProperty('--ev'); return; }
+  document.documentElement.style.setProperty('--ev', evento.color);
+  $('bandaNombre').textContent = evento.corto;
+  $('bandaDetalle').textContent = evento.fechaTexto + ' · ' + evento.horario;
+  b.classList.remove('oculto');
+  document.title = evento.corto + ' · Entradas';
+}
+function cerrarSesionLocal() {
+  listaCache = null; vendedores = []; vendedoresHora = 0; misDatos = null; listaActual = null; envio = null;
   detenerLector();
+  cerrarHoja();
   sesion = null;
-  try { localStorage.removeItem('clave'); } catch (e) {}
+  evento = null;
+  pintarBandaEvento();
   $('avatar').classList.add('oculto');
   $('menuUsuario').classList.add('oculto');
   $('pestanas').classList.add('oculto');
   $('subtituloMarca').textContent = 'Control de entradas';
-  mostrar('login');
+}
+function cambiarEvento() {
+  if (!confirm('Estás en ' + evento.corto + '. ¿Quieres salir de este evento y elegir otro?')) return;
+  cerrarSesionLocal();
+  pantallaIngreso('Elige el evento y vuelve a entrar.');
+}
+function salir() {
+  cerrarSesionLocal();
+  try { localStorage.removeItem('clave'); } catch (e) {}
+  pantallaIngreso();
 }
 function alternarMenu() {
   const m = $('menuUsuario'), abierto = m.classList.toggle('oculto');
@@ -212,38 +278,30 @@ function combo(contenedor, items, opciones) {
 }
 
 // ---------- Formularios de comprador y pago ----------
+// En Emprende Kids se registra al padre, la madre o el apoderado (los niños no se registran)
+const esApoderado = () => !!(evento && /apoderado/i.test(evento.etiquetaComprador || ''));
 function htmlComprador(p) {
+  const apo = esApoderado();
   return `
-    <label for="${p}Nombre">Nombre completo</label>
+    ${apo ? '<p class="nota" style="margin-top:-4px">Registra al padre, la madre o el apoderado. Los niños no se registran.</p>' : ''}
+    <label for="${p}Nombre">${apo ? 'Nombre del padre, madre o apoderado' : 'Nombre completo'}</label>
     <input type="text" id="${p}Nombre" autocomplete="off" autocapitalize="words" placeholder="Como figura en su documento">
     <div class="dos">
-      <div><label for="${p}TipoDoc">Documento</label>
+      <div><label for="${p}TipoDoc">${apo ? 'Documento del adulto' : 'Documento'}</label>
         <select id="${p}TipoDoc"><option>DNI</option><option>Carnet de extranjería</option><option>Pasaporte</option></select></div>
       <div><label for="${p}Doc">Número</label><input type="text" id="${p}Doc" inputmode="numeric" autocomplete="off"></div>
     </div>
-    <label for="${p}Cel">Celular con WhatsApp</label>
+    <label for="${p}Cel">${apo ? 'Celular del adulto (con WhatsApp)' : 'Celular con WhatsApp'}</label>
     <input type="tel" id="${p}Cel" inputmode="numeric" maxlength="9" placeholder="9XX XXX XXX">
-    <p class="nota">Para menores de edad, usa el DNI del adulto que lo acompaña.</p>`;
+    ${apo ? '' : '<p class="nota">Para menores de edad, usa el DNI del adulto que lo acompaña.</p>'}`;
 }
-// Precio de venta: se recuerda el último que usaste en este equipo (30, 35, 40...)
-const PRECIOS_RAPIDOS = [30, 35, 40];
-function precioSugerido() {
-  try { const v = Number(localStorage.getItem('precioVenta')); if (v > 0) return v; } catch (e) {}
-  return PRECIOS_RAPIDOS[0];
-}
-function recordarPrecio(m) { try { if (Number(m) > 0) localStorage.setItem('precioVenta', String(Number(m))); } catch (e) {} }
-function elegirPrecio(p, v) {
-  $(p + 'Monto').value = v;
-  document.querySelectorAll('#' + p + 'Precios button').forEach(b => b.classList.toggle('sel', Number(b.dataset.v) === v));
-}
-function htmlPago(p, monto, editable, conRegalo, rapidos) {
+// Precio: una sola casilla obligatoria, vacía al empezar. Se escribe el precio al que se vendió.
+function htmlPago(p, conRegalo) {
   const metodos = ['Efectivo', 'Yape', 'Plin', 'Transferencia'].concat(conRegalo ? ['Regalo'] : []);
   return `
-    ${rapidos ? `<span class="etiqueta" style="margin-top:0">Precio de la entrada</span>
-    <div class="segmentos" id="${p}Precios">${PRECIOS_RAPIDOS.map(v => `<button type="button" data-v="${v}" class="${Number(monto) === v ? 'sel' : ''}" onclick="elegirPrecio('${p}', ${v})">S/ ${v}</button>`).join('')}</div>` : ''}
     <div class="dos">
-      <div><label for="${p}Monto">${rapidos ? 'Otro monto (S/)' : 'Monto (S/)'}</label>
-        <input type="number" id="${p}Monto" inputmode="decimal" min="0" step="0.5" value="${monto}" ${editable ? '' : 'readonly'}${rapidos ? ` oninput="document.querySelectorAll('#${p}Precios button').forEach(b => b.classList.toggle('sel', b.dataset.v === this.value))"` : ''}></div>
+      <div><label for="${p}Monto">Precio de venta (S/)</label>
+        <input type="text" id="${p}Monto" inputmode="decimal" autocomplete="off" placeholder="Escribe el precio" value=""></div>
       <div id="${p}OperBloque" class="oculto"><label for="${p}Oper">Código de operación</label>
         <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Del comprobante"></div>
     </div>
@@ -257,8 +315,13 @@ function elegirMetodo(p, b) {
   $(p + 'Metodos').dataset.valor = m;
   $(p + 'OperBloque').classList.toggle('oculto', !['Yape', 'Plin', 'Transferencia'].includes(m));
   const monto = $(p + 'Monto');
-  if (m === 'Regalo (sin pago)' && !monto.readOnly) monto.value = 0;
-  else if (!monto.readOnly && Number(monto.value) === 0) monto.value = precioSugerido();
+  if (m === 'Regalo (sin pago)') { monto.value = '0'; monto.readOnly = true; }
+  else if (monto.readOnly) { monto.readOnly = false; monto.value = ''; }
+}
+// Precio válido: número mayor que 0, con punto o coma decimal
+function precioValido(t) {
+  t = String(t || '').trim().replace(',', '.');
+  return /^\d+(\.\d{1,2})?$/.test(t) && Number(t) > 0 && Number(t) <= 1000;
 }
 function leerComprador(p) {
   return { nombre: $(p + 'Nombre').value, tipoDoc: $(p + 'TipoDoc').value, doc: $(p + 'Doc').value, celular: $(p + 'Cel').value };
@@ -271,8 +334,8 @@ function validarLocal(d) {
   if (!d.doc.trim()) return 'Escribe el número de documento';
   if (d.tipoDoc === 'DNI' && !/^\d{8}$/.test(d.doc.trim())) return 'El DNI debe tener 8 números';
   if (!/^9\d{8}$/.test(d.celular.replace(/\D/g, ''))) return 'El celular debe tener 9 números y empezar con 9';
+  if (d.metodo !== 'Regalo (sin pago)' && !precioValido(d.monto)) return 'Escribe el precio de venta: un número mayor que 0';
   if (!d.metodo) return 'Elige el método de pago';
-  if (d.monto === '' || isNaN(Number(d.monto)) || Number(d.monto) < 0) return 'Escribe el monto';
   if (['Yape', 'Plin', 'Transferencia'].includes(d.metodo) && !d.operacion.trim()) return 'Escribe el código de operación';
   return '';
 }
@@ -288,7 +351,7 @@ async function cargarVendedores(forzar) {
 async function cargarLista(forzar) {
   if (!forzar && listaCache && Date.now() - listaCache.t < 60000) return listaCache;
   const r = await api('lista', {}, true);
-  if (r.ok) listaCache = { filas: r.filas, hora: r.hora, t: Date.now() };
+  if (r.ok) listaCache = { filas: r.filas, otros: new Set(r.otros || []), hora: r.hora, t: Date.now() };
   else if (!listaCache) aviso(r.error);
   return listaCache;
 }
@@ -305,7 +368,9 @@ function prepararRegistro() {
   $('rDatos').classList.add('oculto');
   $('rError').textContent = '';
   $('btnRegistrar').dataset.op = opId();
-  const items = vendedores.filter(v => v.codigo !== 'CAJA').map(v => ({ value: v.codigo, label: v.nombre, sub: v.tipo + ' · ' + v.codigo, v }));
+  // En eventos sin concursantes (India Fest, Emprende Kids) solo vende la organización
+  const items = vendedores.filter(v => v.codigo !== 'CAJA' && (evento.concursantes || v.tipo !== 'Concursante'))
+    .map(v => ({ value: v.codigo, label: v.nombre, sub: v.tipo + ' · ' + v.codigo, v }));
   combo('rVendedor', items, {
     placeholder: 'Escribe un nombre',
     alElegir: it => elegirVendedor(it.v),
@@ -317,8 +382,8 @@ async function elegirVendedor(v) {
   const esConc = v.tipo === 'Concursante';
   $('bloqueComprador').innerHTML = htmlComprador('r');
   $('bloquePago').innerHTML = esConc
-    ? '<p class="nota" style="margin-top:-4px">Lo que pagó el comprador al concursante. Si fue un regalo, elige Regalo.</p>' + htmlPago('r', precioSugerido(), true, true, true)
-    : htmlPago('r', precioSugerido(), true, false, true);
+    ? '<p class="nota" style="margin-top:-4px">Lo que pagó el comprador al concursante. Si fue un regalo, elige Regalo.</p>' + htmlPago('r', true)
+    : htmlPago('r', false);
   $('rDatos').classList.remove('oculto');
   $('bloqueQR').classList.toggle('oculto', !esConc);
   if (esConc) {
@@ -353,20 +418,19 @@ async function registrar() {
   const esConc = v.tipo === 'Concursante';
   const d = Object.assign({ vendedor: v.codigo }, leerComprador('r'), leerPago('r'));
   if (esConc) { d.id = registro.id; if (!d.id) { err.textContent = 'Elige cuál de sus entradas entregó'; return; } }
-  const e = validarLocal(d) || (!esConc && !(Number(d.monto) > 0) ? 'Elige el precio de la entrada' : '');
-  if (e) { err.textContent = e; return; }
+  const e = validarLocal(d);
+  if (e) { err.textContent = e; if (/precio/.test(e)) $('rMonto').focus(); return; }
   const btn = $('btnRegistrar'); d.opId = btn.dataset.op; btn.disabled = true;
   const r = await api('registrar', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  if (d.metodo !== 'Regalo (sin pago)') recordarPrecio(d.monto);
   hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'), r.numero);
 }
 
 // ---------- Caja ----------
 function prepararCaja() {
   $('bloqueCompradorCaja').innerHTML = htmlComprador('c');
-  $('bloquePagoCaja').innerHTML = htmlPago('c', precioSugerido(), true, false, true);
+  $('bloquePagoCaja').innerHTML = htmlPago('c', false);
   $('btnCaja').textContent = 'Cobrar y registrar';
   $('cError').textContent = '';
   $('cIngresa').checked = true;
@@ -375,14 +439,13 @@ function prepararCaja() {
 async function venderCaja() {
   const err = $('cError'); err.textContent = '';
   const d = Object.assign({}, leerComprador('c'), leerPago('c'));
-  const e = validarLocal(d) || (Number(d.monto) > 0 ? '' : 'Elige el precio de la entrada');
-  if (e) { err.textContent = e; return; }
+  const e = validarLocal(d);
+  if (e) { err.textContent = e; if (/precio/.test(e)) $('cMonto').focus(); return; }
   d.ingresaAhora = $('cIngresa').checked;
   const btn = $('btnCaja'); d.opId = btn.dataset.op; btn.disabled = true;
   const r = await api('venderPuerta', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  recordarPrecio(d.monto);
   hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} con ${d.metodo}. ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'), r.numero);
 }
 
@@ -392,7 +455,9 @@ function hecho(id, nombre, cel, texto, otra, n) {
   $('hCodigo').textContent = id;
   $('hDiseno').innerHTML = '<div class="esperando">Preparando la entrada...</div>';
   const link = APP_URL + '?t=' + id;
-  const msg = `Hola ${nombre.split(' ')[0]}, esta es tu entrada para ${sesion.config ? sesion.config.evento : 'el evento'}:\n${link}\nMuéstrala en la puerta. Cada QR sirve para un solo ingreso.`;
+  // Mensaje al comprador: el texto de la pestaña Eventos, con su nombre y el enlace de su entrada
+  const saludo = (evento.msgComprador || 'Hola [nombre], esta es tu entrada para ' + evento.nombre + ':').replace(/\[nombre\]/gi, nombre.split(' ')[0]);
+  const msg = `${saludo}\n${link}\nMuéstrala en la puerta. Cada QR sirve para un solo ingreso.`;
   $('hWhats').href = 'https://wa.me/51' + cel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
   $('hOtra').onclick = otra;
   mostrar('hecho');
@@ -448,19 +513,24 @@ async function validar(codigo) {
     sonido(false); return;
   }
   const vend = r.vendedor ? r.vendedor + (r.tipoVendedor === 'Concursante' ? ' · concursante' + (r.nLista ? ', N° ' + r.nLista : '') : ' · organización') : '';
-  const comunes = [['Comprador', r.comprador], [r.tipoDoc || 'Documento', r.doc], ['Vendió', vend], ['Registrada', r.fechaRegistro], ['Escaneada', r.horaEscaneo], ['Código', r.id]];
+  const comunes = [['Comprador', r.comprador], [r.tipoDoc || 'Documento', r.doc], ['Vendió', vend], ['N.º', r.nLista], ['Registrada', r.fechaRegistro], ['Escaneada', r.horaEscaneo], ['Código', r.id]];
+  // Nombre del evento de la entrada, en grande y con su color
+  const evGrande = r.eventoNombre ? `<div class="ev-grande" style="--c:${esc(r.eventoColor || '#E2B657')}">${esc(r.eventoNombre)}</div>` : '';
   if (r.resultado === 'Válido') {
-    abrirHoja('ok', `<div class="veredicto"><div class="sello">${icono('ok', 'stroke-width="2.6"')}</div><div><h2>Puede pasar</h2><p>${r.sinDatos ? 'Concursante sin datos del comprador: pide su DNI si puedes.' : 'Ponle el sello en el brazo.'}</p></div></div>${filas(comunes)}${siguiente}`);
+    abrirHoja('ok', `<div class="veredicto"><div class="sello">${icono('ok', 'stroke-width="2.6"')}</div><div><h2>Puede pasar</h2><p>${r.sinDatos ? 'Concursante sin datos del comprador: pide su DNI si puedes.' : 'Ponle el sello en el brazo.'}</p></div></div>${evGrande}${filas(comunes)}${siguiente}`);
     sonido(true);
     temporizador = setTimeout(siguienteEscaneo, 3500);
+  } else if (r.resultado === 'Otro evento') {
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>No es de este horario</h2><p>${esc(r.mensaje)}</p></div></div>${evGrande}${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.85)">Una entrada solo sirve para su evento. No la dejes pasar.</p>${siguiente}`);
+    sonido(false);
   } else if (r.resultado === 'Ya usado') {
-    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Ya fue usada</h2><p>Ingresó ${esc(r.horaIngreso)} · escaneó ${esc(r.escaneadoPor)}</p></div></div>${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.8)">Si tiene sello, es un reingreso. Si no, llama al supervisor.</p>${siguiente}`);
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Ya fue usada</h2><p>Ingresó ${esc(r.horaIngreso)} · escaneó ${esc(r.escaneadoPor)}</p></div></div>${evGrande}${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.8)">Si tiene sello, es un reingreso. Si no, llama al supervisor.</p>${siguiente}`);
     sonido(false);
   } else if (r.resultado === 'Anulado') {
-    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Entrada anulada</h2><p>Deriva al supervisor.</p></div></div>${filas(comunes.concat([['Motivo', r.obs]]))}${siguiente}`);
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Entrada anulada</h2><p>Deriva al supervisor.</p></div></div>${evGrande}${filas(comunes.concat([['Motivo', r.obs]]))}${siguiente}`);
     sonido(false);
   } else {
-    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('alerta')}</div><div><h2>No existe</h2><p>Este código no es del evento. Deriva a caja o al supervisor.</p></div></div>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}${siguiente}`);
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('alerta')}</div><div><h2>No existe</h2><p>Este código no está registrado o no tiene comprador asignado. Deriva a caja o al supervisor.</p></div></div>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}${siguiente}`);
     sonido(false);
   }
 }
@@ -513,7 +583,11 @@ function buscar() {
   const q = $('bQ').value.trim();
   if (q.length < 3) return;
   const todos = filtrarLista(q), res = todos.slice(0, 50).map(aEntrada);
-  $('bEstado').innerHTML = (todos.length ? todos.length + ' resultado' + (todos.length > 1 ? 's' : '') + (todos.length > 50 ? ' (se muestran 50)' : '') : 'Sin resultados para "' + esc(q) + '".') +
+  const doc = q.toUpperCase().replace(/\s+/g, '');
+  const enOtro = !todos.length && listaCache.otros && listaCache.otros.has(doc);
+  $('bEstado').innerHTML = (todos.length ? todos.length + ' resultado' + (todos.length > 1 ? 's' : '') + (todos.length > 50 ? ' (se muestran 50)' : '')
+    : enOtro ? '<b class="aviso-otro">Este DNI tiene entradas en otro evento.</b> Aquí solo se ven las de ' + esc(evento.corto) + '.'
+    : 'Sin resultados para "' + esc(q) + '" en ' + esc(evento.corto) + '.') +
     ` · datos de las ${esc(listaCache.hora.slice(-5))} <button type="button" class="enlace" onclick="actualizarBusqueda()">Actualizar</button>`;
   $('bPanel').classList.toggle('oculto', !res.length);
   const admin = sesion.rol === 'Administrador';
@@ -532,7 +606,8 @@ function buscar() {
 async function actualizarBusqueda() { await cargarLista(true); buscarEnVivo(); }
 const estadoTexto = e => ({ Generada: 'Sin registrar', Entregada: 'Registrada', Usada: 'Ingresó', Anulada: 'Anulada' }[e] || e);
 function reenviar(id, nombre, cel) {
-  const msg = `Hola${nombre ? ' ' + nombre.split(' ')[0] : ''}, esta es tu entrada:\n${APP_URL}?t=${id}`;
+  const saludo = nombre && evento.msgComprador ? evento.msgComprador.replace(/\[nombre\]/gi, nombre.split(' ')[0]) : `Hola${nombre ? ' ' + nombre.split(' ')[0] : ''}, esta es tu entrada:`;
+  const msg = `${saludo}\n${APP_URL}?t=${id}`;
   window.open((cel ? 'https://wa.me/51' + cel : 'https://wa.me/') + '?text=' + encodeURIComponent(msg), '_blank');
 }
 async function anular(id) {
@@ -563,9 +638,10 @@ async function armarLista(cod) {
     const clase = x.estado === 'Usada' ? 'usada' : x.comprador ? 'registrada' : 'libre';
     return `<button type="button" class="ficha ${clase}" onclick="verEntradaEnHoja('${jsArg(x.id)}','Entrada N° ${jsArg(x.n)}','','','${jsArg(x.n)}')" aria-label="Entrada ${esc(x.n)}">${esc(x.n)}<small>${x.id.slice(0, 4)}</small></button>`;
   }).join('');
-  const evento = sesion.config ? sesion.config.evento : 'el evento';
+  const nombreEvento = evento.nombre;
   listaActual.celular = String(r.celular || '').replace(/\D/g, '');
-  $('lTexto').value = `Hola ${r.nombre.split(' ')[0]}, te saluda Meylin de Inka Fashion Perú. Te estamos asignando tus ${listaActual.qrs.length} entradas con el nuevo formato y la nueva fecha: ${fechaTexto()}.`;
+  const plantillaMsg = evento.msgConcursante || 'Hola [nombre], te saluda Meylin de Inka Fashion Perú. Te estamos asignando tus [cantidad] entradas con el nuevo formato y la nueva fecha: [fecha].';
+  $('lTexto').value = plantillaMsg.replace(/\[nombre\]/gi, r.nombre.split(' ')[0]).replace(/\[cantidad\]/gi, listaActual.qrs.length).replace(/\[fecha\]/gi, fechaTexto());
   enlacesWhatsApp();
   envio = null;
   $('lCompartir').innerHTML = `<button class="btn btn-oro" onclick="guardarEnCarpeta()">Guardar las ${listaActual.qrs.length} imágenes y abrir el chat</button>`;
@@ -574,7 +650,7 @@ async function armarLista(cod) {
   $('lAcceso').classList.toggle('oculto', !r.clave);
   if (r.clave) {
     $('lClave').textContent = r.clave;
-    const m = `Hola ${r.nombre.split(' ')[0]}, para ver tus entradas de ${evento} entra a:\n${APP_URL}\nTu clave personal es: ${r.clave}\nNo la compartas.`;
+    const m = `Hola ${r.nombre.split(' ')[0]}, para ver tus entradas de ${nombreEvento} entra a:\n${APP_URL}\nElige ${evento.corto} y escribe tu clave personal: ${r.clave}\nNo la compartas.`;
     $('lWhatsClave').href = 'https://wa.me/?text=' + encodeURIComponent(m);
   }
   $('lSalida').classList.remove('oculto');
@@ -754,30 +830,58 @@ async function verResumen() {
   const fila = (a, b) => `<div class="dato"><span>${a}</span><b>${b}</b></div>`;
   c.innerHTML = `<div class="cifras">${[[s.total - s.anulada, 'Entradas'], [s.entregada + s.usada, 'Con comprador'], [s.usada, 'Ingresaron']].map(x => `<div class="cifra vidrio"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')}</div>
     <div class="vidrio panel"><h3>Estado de las entradas</h3><div class="datos">${fila('Sin datos del comprador', s.generada) + fila('Registradas, aún no ingresan', s.entregada) + fila('Ya ingresaron', s.usada) + fila('Anuladas', s.anulada) + fila('Escaneos rechazados', s.rechazos)}</div></div>
-    <div class="vidrio panel"><h3>Caja en puerta</h3><div class="datos">${(Object.keys(s.caja).map(m => fila(m, s.caja[m])).join('') || fila('Ventas', 0)) + fila('Total cobrado', 'S/ ' + s.montoCaja)}</div>
-    <p class="nota">El detalle completo y las ventas de concursantes están en la hoja de Google.</p></div>`;
+    <div class="vidrio panel"><h3>Caja en puerta</h3><div class="datos">${(Object.keys(s.caja).map(m => fila(m, s.caja[m])).join('') || fila('Ventas', 0)) + fila('Total cobrado', 'S/ ' + s.montoCaja)}</div></div>
+    <div class="vidrio panel"><h3>Dinero por método de pago</h3><div class="datos">${(Object.keys(s.metodos || {}).map(m => fila(esc(m), 'S/ ' + s.metodos[m])).join('') || fila('Ventas', 0)) + fila('Total', 'S/ ' + (s.montoTotal || 0)) + fila('Códigos de reserva libres', s.reserva == null ? '-' : s.reserva)}</div>
+    <p class="nota">Solo ${esc(evento.corto)}. El detalle completo está en la hoja de Google.</p></div>`;
+}
+
+// ---------- Sorteo (solo Administración, en el evento elegido) ----------
+function prepararSorteo() {
+  $('sEvento').textContent = evento.corto;
+  $('sResultado').innerHTML = '';
+}
+async function sortear() {
+  if (!confirm('¿Sortear ahora entre las entradas de ' + evento.corto + ' que ya ingresaron?')) return;
+  const btn = $('btnSortear'); btn.disabled = true;
+  const r = await api('sorteo');
+  btn.disabled = false;
+  const c = $('sResultado');
+  if (!r.ok) { c.innerHTML = `<div class="vidrio panel"><p class="error" style="margin:0">${esc(r.error)}</p></div>`; return; }
+  c.innerHTML = `<div class="vidrio panel ganador">
+    <span class="etiqueta" style="margin-top:0">Sorteo N.º ${esc(r.sorteoN)} · ${esc(r.participantes)} participantes</span>
+    <div class="ganador-num">N.º ${esc(r.n || '-')}</div>
+    <div class="codigo">${esc(r.id)}</div>
+    <div class="datos"><div class="dato"><span>Ganador</span><b>${esc(r.comprador)}</b></div><div class="dato"><span>Documento</span><b>${esc(r.doc || '-')}</b></div><div class="dato"><span>Vendió</span><b>${esc(r.vendedor)}</b></div></div>
+    <p class="nota">Quedó anotado en el Historial. Este ganador no vuelve a salir en los siguientes sorteos.</p></div>`;
+  sonido(true);
 }
 
 // ---------- Diseño de la entrada ----------
-// Diseño de la entrada. Medidas en píxeles del original (2160 x 2700): se escalan solas.
-const PLANTILLA = 'entrada.webp?v=6';
-const PLANTILLA_ANCHO = 2160, PLANTILLA_ALTO = 2700;
-const CAJA_QR = { x: 220, y: 1836, w: 600, h: 600 };   // recuadro blanco del talón
-const CAJA_NUM = { x: 280, y: 2498, w: 104, h: 68 };   // casilla "N.º"
-const CAJA_COD = { x: 444, y: 2498, w: 396, h: 68 };   // casilla del código de 10 caracteres
-const TINTA = '#3B2212';
+// Diseño de la entrada: cada evento trae su plantilla y sus casillas desde la pestaña Eventos.
+// Medidas en píxeles de la imagen base (ancho x alto de la pestaña): se escalan solas.
+// Este es el diseño de Inka Fashion, por si el servidor no envía otro.
+const DISENO_INKA = {
+  plantilla: 'entrada.webp?v=6', ancho: 2160, alto: 2700,
+  cajaQR: { x: 220, y: 1836, w: 600, h: 600 },   // recuadro blanco del talón
+  cajaNum: { x: 280, y: 2498, w: 104, h: 68 },   // casilla "N.º"
+  cajaCod: { x: 444, y: 2498, w: 396, h: 68 },   // casilla del código de 10 caracteres
+  tinta: '#3B2212'
+};
 const FUENTE = 'Montserrat, "Segoe UI", Arial, sans-serif';
+let plantillas = {};   // imágenes ya cargadas, por archivo
+const disenoActual = () => (evento && evento.plantilla && evento.ancho) ? evento : DISENO_INKA;
 
-function cargarPlantilla() {
-  if (!plantillaPromesa) {
-    plantillaPromesa = new Promise((ok, mal) => {
+function cargarPlantilla(d) {
+  const src = (d || disenoActual()).plantilla;
+  if (!plantillas[src]) {
+    plantillas[src] = new Promise((ok, mal) => {
       const i = new Image();
       i.onload = () => ok(i);
-      i.onerror = () => { plantillaPromesa = null; mal(new Error('No se encontró el diseño de la entrada')); };
-      i.src = PLANTILLA;
+      i.onerror = () => { delete plantillas[src]; mal(new Error('No se encontró el diseño de la entrada')); };
+      i.src = src;
     });
   }
-  return plantillaPromesa;
+  return plantillas[src];
 }
 function matrizQR(texto) {
   const q = new QRCode(document.createElement('div'), { text: texto, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.M });
@@ -785,8 +889,9 @@ function matrizQR(texto) {
   for (let r = 0; r < n; r++) { const fila = []; for (let c = 0; c < n; c++) fila.push(m.isDark(r, c)); out.push(fila); }
   return out;
 }
-async function crearEntrada(id, n) {
-  const img = await cargarPlantilla();
+async function crearEntrada(id, n, diseno) {
+  const D = diseno || disenoActual();
+  const img = await cargarPlantilla(D);
   try { await document.fonts.load('700 40px Montserrat'); } catch (e) { /* usa la fuente de respaldo */ }
   // La imagen puede venir en cualquier tamaño: se trabaja a 2000 px como máximo (liviana para WhatsApp)
   const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -795,11 +900,11 @@ async function crearEntrada(id, n) {
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, cv.width, cv.height);
-  const sx = cv.width / PLANTILLA_ANCHO, sy = cv.height / PLANTILLA_ALTO;
+  const sx = cv.width / D.ancho, sy = cv.height / D.alto;
   const caja = k => ({ x: k.x * sx, y: k.y * sy, w: k.w * sx, h: k.h * sy });
 
   // QR negro sobre blanco, centrado y con margen para que el lector lo capte fácil
-  const B = caja(CAJA_QR);
+  const B = caja(D.cajaQR);
   ctx.fillStyle = '#FFFFFF'; ctx.fillRect(B.x, B.y, B.w, B.h);
   if (!id) throw new Error('Esta entrada no tiene código. Vuelve a abrirla desde Buscar.');
   const m = matrizQR(id), nm = m.length;
@@ -808,7 +913,7 @@ async function crearEntrada(id, n) {
   ctx.fillStyle = '#000000';
   for (let r = 0; r < nm; r++) for (let c = 0; c < nm; c++) if (m[r][c]) ctx.fillRect(x0 + c * cel, y0 + r * cel, cel, cel);
 
-  ctx.fillStyle = TINTA;
+  ctx.fillStyle = D.tinta || '#1A1A1A';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   // Escribe el texto centrado en la casilla, achicándolo si no entra
   const centrar = (k, texto, ancho) => {
@@ -824,23 +929,23 @@ async function crearEntrada(id, n) {
   // Número de la entrada
   const num = /^\d+$/.test(String(n || '').trim()) ? String(Number(n)).padStart(2, '0') : '';
   if (num) {
-    const { b, base } = centrar(CAJA_NUM, num, t => ctx.measureText(t).width);
+    const { b, base } = centrar(D.cajaNum, num, t => ctx.measureText(t).width);
     ctx.fillText(num, b.x + b.w / 2, base);
   }
 
   // Código de 10 caracteres, letra por letra con el mismo espacio (fácil de leer y dictar)
   const letras = String(id).split('');
   const paso = () => ctx.measureText('W').width * 1.1 * letras.length; // mismo tamaño en todas las entradas
-  const { b, base } = centrar(CAJA_COD, id, paso);
+  const { b, base } = centrar(D.cajaCod, id, paso);
   const avance = paso() / letras.length;
   const xi = b.x + b.w / 2 - avance * (letras.length - 1) / 2;
   letras.forEach((l, i) => ctx.fillText(l, xi + i * avance, base));
   return cv;
 }
-async function mostrarDiseno(idCont, id, n) {
+async function mostrarDiseno(idCont, id, n, diseno) {
   const cont = $(idCont);
   try {
-    const cv = await crearEntrada(id, n);
+    const cv = await crearEntrada(id, n, diseno);
     entradaActual = { id, cv };
     const im = document.createElement('img');
     im.alt = 'Entrada ' + id; im.src = cv.toDataURL('image/jpeg', 0.9);
@@ -915,7 +1020,7 @@ function pintarRespaldo() {
   if (!listaCache) { $('rpEstado').textContent = 'No se pudo cargar la lista. Revisa tu conexión.'; return; }
   const filas = filasRespaldo(), max = 300;
   const total = listaCache.filas.length, ing = listaCache.filas.filter(f => f[6] === 'Usada').length;
-  $('rpEstado').textContent = `${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${listaCache.hora.slice(-5)}` +
+  $('rpEstado').textContent = `${evento.corto}: ${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${listaCache.hora.slice(-5)}` +
     (filas.length > max ? ` · se muestran ${max} de ${filas.length}, el PDF trae todas` : '');
   $('rpCuerpo').innerHTML = filas.slice(0, max).map(f => `<tr class="${f[6] === 'Anulada' ? 'anulada' : ''}">
     <td class="mono">${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2]) || '—'}</td><td>${esc(f[3]) || '—'}</td><td>${esc(f[5])}</td><td>${estadoTexto(f[6])}</td></tr>`).join('') ||
@@ -927,12 +1032,12 @@ function descargarRespaldo() {
   const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const cols = [['Código', 32], ['N.º', 12], ['Comprador', 78], ['Documento', 28], ['Vendedor', 62], ['Estado', 30], ['Visto', 15]];
   const x0 = 12, alto = 6.4, porPag = 27, paginas = Math.max(1, Math.ceil(filas.length / porPag));
-  const evento = sesion.config ? sesion.config.evento : 'Inka Fashion Perú';
-  const corta = (t, w) => { t = String(t || ''); while (t && pdf.getTextWidth(t) > w - 3) t = t.slice(0, -1); return t; };
+  const nombreEv = evento.nombre;
+  const corta =(t, w) => { t = String(t || ''); while (t && pdf.getTextWidth(t) > w - 3) t = t.slice(0, -1); return t; };
   for (let p = 0; p < paginas; p++) {
     if (p) pdf.addPage();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
-    pdf.text('Lista de respaldo · ' + evento, x0, 13);
+    pdf.text('Lista de respaldo · ' + nombreEv, x0, 13);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
     pdf.text(`Generada ${listaCache.hora} · ${filas.length} entradas · ordenadas por código · página ${p + 1} de ${paginas}`, x0, 18.5);
     let y = 25, x = x0;
@@ -948,7 +1053,7 @@ function descargarRespaldo() {
       cols.forEach((c, k) => { if (k === 6) pdf.rect(x + 5, y - 3.4, 4, 4); else pdf.text(corta(v[k], c[1]), x + 1.5, y); x += c[1]; });
     });
   }
-  pdf.save('Lista_respaldo_' + listaCache.hora.replace(/[\/: ]/g, '-') + '.pdf');
+  pdf.save('Lista_respaldo_' + evento.clave + '_' + listaCache.hora.replace(/[\/: ]/g, '-') + '.pdf');
 }
 
 // ---------- Entrada pública ----------
@@ -956,10 +1061,19 @@ async function verTicket(id) {
   $('subtituloMarca').textContent = 'Tu entrada';
   mostrar('ticket');
   const r = await api('ticket', { id });
+  // Cada entrada muestra el diseño y el nombre de su propio evento
+  if (r.ok && r.ev) {
+    $('subtituloMarca').textContent = r.ev.corto;
+    document.documentElement.style.setProperty('--ev', r.ev.color);
+    document.title = r.ev.corto + ' · Tu entrada';
+    $('tEvento').innerHTML = `<b>${esc(r.ev.nombre)}</b><span>${esc(r.ev.fechaTexto)} · ${esc(r.ev.horario)}</span><span>${esc(r.ev.lugar)}</span>`;
+    $('tEvento').classList.remove('oculto');
+  }
+  const diseno = r.ok && r.diseno && r.diseno.plantilla && r.diseno.ancho ? r.diseno : DISENO_INKA;
   if (!r.ok || r.estado === 'Anulada') {
     $('tError').textContent = r.ok ? 'Esta entrada fue anulada. Comunícate con la organización.' : r.error;
     $('tDiseno').innerHTML = '';
-  } else if (await mostrarDiseno('tDiseno', id, r.n)) {
+  } else if (await mostrarDiseno('tDiseno', id, r.n, diseno)) {
     $('tBotones').classList.remove('oculto');
   }
   if (!r.ok) { ['tNombre', 'tDoc', 'tVend', 'tEstado'].forEach(k => $(k).textContent = '-'); return; }
@@ -976,14 +1090,6 @@ async function verTicket(id) {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarHoja(); });
   const t = new URLSearchParams(location.search).get('t');
   if (t) { verTicket(t.toUpperCase()); return; }
-  let guardada = null;
-  try { guardada = localStorage.getItem('clave'); } catch (e) {}
-  if (guardada) {
-    mostrar('login');
-    sesion = { clave: guardada };
-    const r = await api('login');
-    if (r.ok) { iniciarSesion(guardada, r); return; }
-    sesion = null;
-  }
-  mostrar('login');
+  // Nunca entra solo: aunque la clave esté guardada, siempre hay que elegir el evento y tocar "Entrar"
+  pantallaIngreso();
 })();
