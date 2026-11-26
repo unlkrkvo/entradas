@@ -2,7 +2,8 @@
 'use strict';
 
 const API = 'https://script.google.com/macros/s/AKfycbzNQTpl4UMnX8DPNTzuEgMbdmjvNK06GRHC7STFHKR8fTZYtsqFBvA6y4d3yazzVVWc4w/exec';
-const APP_URL = location.origin + location.pathname;
+// Los enlaces de las entradas siempre apuntan a la página oficial (aunque se venda desde la versión de prueba /beta/)
+const APP_URL = location.origin + location.pathname.replace(/beta\/(index\.html)?$/, '');
 
 let sesion = null;          // { clave, nombre, rol, codigo, config, precio }
 let evento = null;          // evento con el que se entró (se elige cada vez al iniciar sesión)
@@ -127,9 +128,10 @@ function pintarInicio() {
   const r = ROLES[sesion.rol];
   const hora = new Date().getHours();
   $('saludo').textContent = (hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches') + ', ' + sesion.nombre.split(' ')[0];
-  $('saludoRol').textContent = NOMBRE_ROL[sesion.rol] + ' · ' + evento.corto;
+  $('saludoRol').textContent = 'Estás en ' + evento.corto + ' como ' + NOMBRE_ROL[sesion.rol] + '.';
+  // La primera tarea de cada rol va destacada; las demás, en lista
   const m = visibles(r.mosaico);
-  $('mosaico').innerHTML = m.map((v, i) => `<button class="vidrio${i === 0 && m.length % 2 ? ' ancho' : ''}" onclick="abrir('${v}')">${icono(v)}<div><b>${SECCIONES[v][0]}</b><span>${SECCIONES[v][1]}</span></div></button>`).join('');
+  $('mosaico').innerHTML = m.map((v, i) => `<button class="${i === 0 ? 'principal' : ''}" onclick="abrir('${v}')">${icono(v)}<div><b>${SECCIONES[v][0]}</b><span>${SECCIONES[v][1]}</span></div></button>`).join('');
   // Administración ve en el inicio si la hoja quedó en modo ensayo
   const ensayo = $('inicioEnsayo');
   ensayo.innerHTML = sesion.rol === 'Administrador' && puertaInfo && (puertaInfo.forzado || puertaInfo.forzadoInvalido) ? htmlEnsayo(puertaInfo) : '';
@@ -162,7 +164,7 @@ async function cargarEventosLogin() {
 }
 function pintarEventosLogin(lista) {
   $('eventosLogin').innerHTML = lista.map(e => `<button type="button" class="ev-opcion${eventoElegido === e.clave ? ' sel' : ''}" style="--c:${esc(e.color)}" aria-pressed="${eventoElegido === e.clave}" onclick="elegirEventoLogin('${jsArg(e.clave)}')">
-    <i aria-hidden="true"></i><span><b>${esc(e.corto)}</b><small>${esc(e.fechaTexto)} · ${esc(e.horario)}</small></span></button>`).join('');
+    <i aria-hidden="true"></i><span><b>${esc(e.corto)}</b><small>${esc(e.fechaTexto)}, de ${esc(e.horario)}</small></span></button>`).join('');
 }
 function elegirEventoLogin(clave) {
   eventoElegido = clave;
@@ -209,12 +211,21 @@ function iniciarSesion(clave, r) {
   if (sesion.rol !== 'Puerta') setTimeout(() => { cargarPlantilla().catch(() => {}); try { document.fonts.load('700 40px Montserrat'); } catch (e) {} }, 1500);
 }
 // Franja arriba con el evento elegido: siempre visible dentro de la app
+// Letra negra o blanca, la que se lea mejor sobre el color del evento
+function tintaSobre(color) {
+  const h = String(color || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) return '#FFFFFF';
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.3 ? '#16181C' : '#FFFFFF';
+}
 function pintarBandaEvento() {
-  const b = $('bandaEvento');
-  if (!evento) { b.classList.add('oculto'); document.documentElement.style.removeProperty('--ev'); return; }
-  document.documentElement.style.setProperty('--ev', evento.color);
+  const b = $('bandaEvento'), raiz = document.documentElement.style, meta = document.querySelector('meta[name=theme-color]');
+  if (!evento) { b.classList.add('oculto'); raiz.removeProperty('--ev'); raiz.removeProperty('--ev-tinta'); if (meta) meta.content = '#FFFFFF'; return; }
+  raiz.setProperty('--ev', evento.color);
+  raiz.setProperty('--ev-tinta', tintaSobre(evento.color));
+  if (meta) meta.content = evento.color;   // la barra del celular toma el color del evento
   $('bandaNombre').textContent = evento.corto;
-  $('bandaDetalle').textContent = evento.fechaTexto + ' · ' + evento.horario;
+  $('bandaDetalle').textContent = evento.fechaTexto + ', de ' + evento.horario;
   b.classList.remove('oculto');
   document.title = evento.corto + ' · Entradas';
   pintarEstadoBanda();
@@ -244,7 +255,7 @@ setInterval(() => { if (evento) pintarEstadoBanda(); }, 60000);
 let puertaInfo = null;
 function htmlEnsayo(p) {
   let h = '';
-  if (p.forzado) h += `<div class="ep ensayo"><b>MODO ENSAYO</b><span>Solo pasan entradas de ${esc(p.forzado.corto)}, sin mirar la hora. Antes del evento, borra "Evento activo forzado" en la pestaña Configuración de la hoja.</span></div>`;
+  if (p.forzado) h += `<div class="ep ensayo"><b>Modo ensayo activado</b><span>Solo pasan entradas de ${esc(p.forzado.corto)}, sin mirar la hora. Antes del evento, borra "Evento activo forzado" en la pestaña Configuración de la hoja.</span></div>`;
   if (p.forzadoInvalido) h += `<div class="ep ensayo"><span>En Configuración, "Evento activo forzado" dice "${esc(p.forzadoInvalido)}", que no es un evento: se ignora y la puerta usa la hora. Escribe INKA, INDIA o KIDS, o déjalo vacío.</span></div>`;
   return h;
 }
@@ -364,7 +375,7 @@ function htmlPago(p, conRegalo, conCantidad) {
       <div><label for="${p}Monto">${conCantidad ? 'Precio por entrada (S/)' : 'Precio de venta (S/)'}</label>
         <input type="text" id="${p}Monto" inputmode="decimal" autocomplete="off" placeholder="Escribe el precio" value=""${conCantidad ? ` oninput="totalVenta('${p}')"` : ''}></div>
       <div id="${p}OperBloque" class="oculto"><label for="${p}Oper">Código de operación</label>
-        <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Del comprobante"></div>
+        <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Ej. 4521"></div>
     </div>
     ${conCantidad ? `<p class="total-venta oculto" id="${p}Total" aria-live="polite"></p>` : ''}
     <span class="etiqueta">Método de pago</span>
@@ -634,7 +645,8 @@ async function validar(codigo) {
   const vend = r.vendedor ? r.vendedor + (r.tipoVendedor === 'Concursante' ? ' · concursante' + (r.nLista ? ', N° ' + r.nLista : '') : ' · organización') : '';
   const comunes = [['Comprador', r.comprador], [r.tipoDoc || 'Documento', r.doc], ['Vendió', vend], ['N.º', r.nLista], ['Registrada', r.fechaRegistro], ['Escaneada', r.horaEscaneo], ['Código', r.id]];
   // Nombre del evento de la entrada, en grande y con su color
-  const evGrande = r.eventoNombre ? `<div class="ev-grande" style="--c:${esc(r.eventoColor || '#E2B657')}">${esc(r.eventoNombre)}</div>` : '';
+  const colorEv = r.eventoColor || '#E2B657';
+  const evGrande = r.eventoNombre ? `<div class="ev-grande" style="--c:${esc(colorEv)};--ct:${tintaSobre(colorEv)}">${esc(r.eventoNombre)}</div>` : '';
   if (r.resultado === 'Válido') {
     abrirHoja('ok', `<div class="veredicto"><div class="sello">${icono('ok', 'stroke-width="2.6"')}</div><div><h2>Puede pasar</h2><p>${r.sinDatos ? 'Concursante sin datos del comprador: pide su DNI si puedes.' : 'Ponle el sello en el brazo.'}</p></div></div>${evGrande}${filas(comunes)}${siguiente}`);
     sonido(true);
@@ -967,7 +979,7 @@ async function sortear() {
   const c = $('sResultado');
   if (!r.ok) { c.innerHTML = `<div class="vidrio panel"><p class="error" style="margin:0">${esc(r.error)}</p></div>`; return; }
   c.innerHTML = `<div class="vidrio panel ganador">
-    <span class="etiqueta" style="margin-top:0">Sorteo N.º ${esc(r.sorteoN)} · ${esc(r.participantes)} participantes</span>
+    <span class="etiqueta" style="margin-top:0">Sorteo N.º ${esc(r.sorteoN)}, entre ${esc(r.participantes)} participantes</span>
     <div class="ganador-num">N.º ${esc(r.n || '-')}</div>
     <div class="codigo">${esc(r.id)}</div>
     <div class="datos"><div class="dato"><span>Ganador</span><b>${esc(r.comprador)}</b></div><div class="dato"><span>Documento</span><b>${esc(r.doc || '-')}</b></div><div class="dato"><span>Vendió</span><b>${esc(r.vendedor)}</b></div></div>
@@ -1208,7 +1220,7 @@ async function verTicket(id) {
     $('subtituloMarca').textContent = r.ev.corto;
     document.documentElement.style.setProperty('--ev', r.ev.color);
     document.title = r.ev.corto + ' · Tu entrada';
-    $('tEvento').innerHTML = `<b>${esc(r.ev.nombre)}</b><span>${esc(r.ev.fechaTexto)} · ${esc(r.ev.horario)}</span><span>${esc(r.ev.lugar)}</span>`;
+    $('tEvento').innerHTML = `<b>${esc(r.ev.nombre)}</b><span>${esc(r.ev.fechaTexto)}, de ${esc(r.ev.horario)}</span><span>${esc(r.ev.lugar)}</span>`;
     $('tEvento').classList.remove('oculto');
   }
   const diseno = r.ok && r.diseno && r.diseno.plantilla && r.diseno.ancho ? r.diseno : DISENO_INKA;

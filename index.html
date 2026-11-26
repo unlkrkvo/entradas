@@ -3,25 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#140E1A">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Entradas · Inka Fashion, India Fest y Emprende Kids</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=8">
+<!-- Archivo: letra de la app. Montserrat: solo para el número y el código impresos en la entrada -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css?v=9">
 </head>
 <body>
-<div class="fondo" aria-hidden="true"><div class="patron"></div></div>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs><linearGradient id="oroAnillo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBE7B0"/><stop offset="1" stop-color="#C08B34"/></linearGradient></defs>
-</svg>
 
 <header class="isla">
   <div class="isla-cuerpo vidrio">
     <a class="marca" href="./" aria-label="Inicio">
-      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"/><path d="M15 6v12" stroke-dasharray="1.6 2.2"/></svg>
       <span class="marca-texto">Entradas<small id="subtituloMarca">Control de entradas</small></span>
     </a>
     <button class="avatar oculto" id="avatar" aria-label="Mi cuenta" aria-expanded="false" onclick="alternarMenu()"></button>
@@ -66,14 +63,14 @@
   <!-- Ingreso del personal -->
   <section id="v-login" class="vista">
     <div class="portada">
-      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 12 9l5 8 4-5 8 13z" fill="url(#oroAnillo)"/><path d="M12 9l2.6 4.2-2.6 1.6-2.4-1.4z" fill="#FFF3D0"/><path d="M3 27.5h26" stroke="#E2B657" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"/><path d="M15 6v12" stroke-dasharray="1.6 2.2"/></svg>
       <h1>Control de entradas</h1>
-      <p>Inka Fashion Perú · India Fest · Emprende Kids</p>
+      <p>Para el personal de Inka Fashion, India Fest y Emprende Kids.</p>
     </div>
     <div class="vidrio panel">
-      <span class="etiqueta" style="margin-top:0;text-align:center;display:block">1. Elige el evento</span>
+      <span class="paso">1. Elige el evento donde trabajas hoy</span>
       <div class="eventos-login" id="eventosLogin" role="group" aria-label="Evento"></div>
-      <label for="clave" style="text-align:center">2. Tu clave personal</label>
+      <label for="clave" class="paso">2. Escribe tu clave personal</label>
       <div class="clave"><input id="clave" type="password" autocomplete="off" inputmode="numeric" placeholder="••••••"></div>
       <button class="btn btn-oro" onclick="entrar()">Entrar</button>
       <div class="error" id="loginError" style="text-align:center"></div>
@@ -117,7 +114,7 @@
         <span class="etiqueta">¿Cuál de sus entradas entregó?</span>
         <input type="search" id="rFiltroQR" placeholder="Busca por número o código" autocomplete="off" oninput="pintarFichas()">
         <div class="rejilla" id="rFichas"></div>
-        <div class="leyenda"><span><i style="background:rgba(255,255,255,.25)"></i>Disponible</span><span><i style="background:var(--jade)"></i>Ya registrada</span><span><i style="background:var(--ambar)"></i>Ya ingresó</span></div>
+        <div class="leyenda"><span><i></i>Disponible</span><span><i class="l-reg"></i>Ya registrada</span><span><i class="l-usada"></i>Ya ingresó</span></div>
       </div>
     </div>
     <div class="vidrio panel oculto" id="rDatos">
@@ -146,7 +143,7 @@
 
   <!-- Venta completada -->
   <section id="v-hecho" class="vista">
-    <div class="veredicto"><div class="sello" style="background:rgba(63,211,155,.22)"><svg viewBox="0 0 24 24" fill="none" stroke="#3FD39B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 style="color:var(--marfil)" id="hTitulo">Entrada registrada</h2><p id="hTexto"></p></div></div>
+    <div class="veredicto"><div class="sello"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 id="hTitulo">Entrada registrada</h2><p id="hTexto"></p></div></div>
     <div id="hDiseno" class="disenio"></div>
     <div class="codigo" id="hCodigo"></div>
     <div class="vidrio panel oculto" id="hPanelLista" style="margin-top:14px"><ul class="lista" id="hLista"></ul></div>
@@ -289,6 +286,6 @@
 <script src="lib/html5-qrcode.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jszip.min.js"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
