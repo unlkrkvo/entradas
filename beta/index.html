@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<!-- Versión de prueba: vive en /entradas/beta/ pero usa las imágenes y librerías de /entradas/ -->
+<base href="/entradas/">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Entradas · Inka Fashion, India Fest y Emprende Kids</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Archivo: letra de la app. Montserrat: solo para el número y el código impresos en la entrada -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="beta/estilos.css?v=1">
+</head>
+<body>
+
+<header class="isla">
+  <div class="isla-cuerpo vidrio">
+    <a class="marca" href="beta/" aria-label="Inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"/><path d="M15 6v12" stroke-dasharray="1.6 2.2"/></svg>
+      <span class="marca-texto">Entradas<small id="subtituloMarca">Control de entradas</small></span>
+    </a>
+    <button class="avatar oculto" id="avatar" aria-label="Mi cuenta" aria-expanded="false" onclick="alternarMenu()"></button>
+  </div>
+  <div class="menu-usuario vidrio oculto" id="menuUsuario">
+    <p><b id="menuNombre"></b><span id="menuRol"></span></p>
+    <button class="btn btn-vidrio" style="margin-top:0" onclick="salir()">Cerrar sesión</button>
+  </div>
+  <div class="banda-evento oculto" id="bandaEvento" role="status">
+    <i aria-hidden="true"></i>
+    <div><b id="bandaNombre"></b><small id="bandaDetalle"></small><span id="bandaEstado" class="banda-estado oculto"></span></div>
+    <button type="button" onclick="cambiarEvento()">Cambiar evento</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Entrada pública del comprador -->
+  <section id="v-ticket" class="vista" aria-labelledby="tTitulo">
+    <h1 id="tTitulo" class="sr">Tu entrada</h1>
+    <div id="tEvento" class="ticket-evento oculto"></div>
+    <div id="tDiseno" class="disenio"><div class="esperando">Preparando tu entrada...</div></div>
+    <div class="error" id="tError" style="text-align:center"></div>
+    <div id="tBotones" class="oculto">
+      <button class="btn btn-oro" onclick="compartirEntrada()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Guardar o compartir</button>
+      <div class="fila-btn">
+        <button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button>
+        <button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button>
+      </div>
+    </div>
+    <div class="vidrio panel" style="margin-top:18px">
+      <div class="datos" style="background:transparent;padding:0">
+        <div class="dato"><span>A nombre de</span><b id="tNombre">...</b></div>
+        <div class="dato"><span>Documento</span><b id="tDoc">...</b></div>
+        <div class="dato"><span>Vendida por</span><b id="tVend">...</b></div>
+        <div class="dato"><span>Estado</span><b id="tEstado">...</b></div>
+      </div>
+    </div>
+    <p class="nota" style="text-align:center">Muestra el QR en la puerta. Guarda la imagen para tenerla sin internet. Cada QR sirve para un solo ingreso.</p>
+  </section>
+
+  <!-- Ingreso del personal -->
+  <section id="v-login" class="vista">
+    <div class="portada">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"/><path d="M15 6v12" stroke-dasharray="1.6 2.2"/></svg>
+      <h1>Control de entradas</h1>
+      <p>Para el personal de Inka Fashion, India Fest y Emprende Kids.</p>
+    </div>
+    <div class="vidrio panel">
+      <span class="paso">1. Elige el evento donde trabajas hoy</span>
+      <div class="eventos-login" id="eventosLogin" role="group" aria-label="Evento"></div>
+      <label for="clave" class="paso">2. Escribe tu clave personal</label>
+      <div class="clave"><input id="clave" type="password" autocomplete="off" inputmode="numeric" placeholder="••••••"></div>
+      <button class="btn btn-oro" onclick="entrar()">Entrar</button>
+      <div class="error" id="loginError" style="text-align:center"></div>
+    </div>
+    <p class="nota" style="text-align:center">¿Compraste una entrada? Ábrela desde el enlace o la imagen que te enviaron por WhatsApp.</p>
+  </section>
+
+  <!-- Inicio -->
+  <section id="v-inicio" class="vista">
+    <h1 id="saludo"></h1>
+    <p class="sub" id="saludoRol"></p>
+    <div class="estado-puerta oculto" id="inicioEnsayo" role="status"></div>
+    <div class="cifras oculto" id="cifrasInicio"></div>
+    <div class="mosaico" id="mosaico"></div>
+  </section>
+
+  <!-- Escanear -->
+  <section id="v-escanear" class="vista">
+    <h2>Escanear entradas</h2>
+    <div class="estado-puerta oculto" id="estadoPuerta" role="status"></div>
+    <div class="visor">
+      <div id="lector"></div>
+      <div class="esquinas" aria-hidden="true"></div>
+      <div class="aviso-camara oculto" id="avisoCamara"></div>
+    </div>
+    <div class="manual">
+      <input id="codigoManual" type="text" maxlength="10" autocapitalize="characters" autocomplete="off" placeholder="Código a mano" aria-label="Escribir el código a mano">
+      <button onclick="validarManual()">Validar</button>
+    </div>
+    <p class="nota">Apunta la cámara al QR. El resultado aparece abajo y la cámara sigue lista para el siguiente.</p>
+    <button class="btn btn-vidrio" onclick="abrir('respaldo')">Lista de respaldo (sin internet)</button>
+  </section>
+
+  <!-- Registrar -->
+  <section id="v-registrar" class="vista">
+    <h2>Registrar entrada</h2>
+    <div class="vidrio panel">
+      <span class="etiqueta" style="margin-top:0">¿Quién vendió la entrada?</span>
+      <div id="rVendedor"></div>
+      <div id="bloqueQR" class="oculto">
+        <span class="etiqueta">¿Cuál de sus entradas entregó?</span>
+        <input type="search" id="rFiltroQR" placeholder="Busca por número o código" autocomplete="off" oninput="pintarFichas()">
+        <div class="rejilla" id="rFichas"></div>
+        <div class="leyenda"><span><i></i>Disponible</span><span><i class="l-reg"></i>Ya registrada</span><span><i class="l-usada"></i>Ya ingresó</span></div>
+      </div>
+    </div>
+    <div class="vidrio panel oculto" id="rDatos">
+      <h3>Comprador</h3>
+      <div id="bloqueComprador"></div>
+      <h3 style="margin-top:22px">Pago</h3>
+      <div id="bloquePago"></div>
+      <button class="btn btn-oro" id="btnRegistrar" onclick="registrar()">Registrar entrada</button>
+      <div class="error" id="rError"></div>
+    </div>
+  </section>
+
+  <!-- Caja -->
+  <section id="v-caja" class="vista">
+    <h2>Venta en puerta</h2>
+    <div class="vidrio panel">
+      <h3>Comprador</h3>
+      <div id="bloqueCompradorCaja"></div>
+      <h3 style="margin-top:22px">Pago</h3>
+      <div id="bloquePagoCaja"></div>
+      <label class="interruptor"><span>Entra ahora mismo<small>La entrada queda usada y pasa directo con su sello (si son varias, todas)</small></span><input type="checkbox" id="cIngresa" checked></label>
+      <button class="btn btn-oro" id="btnCaja" onclick="venderCaja()">Cobrar y registrar</button>
+      <div class="error" id="cError"></div>
+    </div>
+  </section>
+
+  <!-- Venta completada -->
+  <section id="v-hecho" class="vista">
+    <div class="veredicto"><div class="sello"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 id="hTitulo">Entrada registrada</h2><p id="hTexto"></p></div></div>
+    <div id="hDiseno" class="disenio"></div>
+    <div class="codigo" id="hCodigo"></div>
+    <div class="vidrio panel oculto" id="hPanelLista" style="margin-top:14px"><ul class="lista" id="hLista"></ul></div>
+    <button class="btn btn-oro" id="hCompartir" onclick="compartirVenta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Enviar imagen por WhatsApp</button>
+    <div class="fila-btn">
+      <button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button>
+      <button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button>
+    </div>
+    <a class="btn btn-vidrio" id="hWhats" target="_blank" rel="noopener">Enviar el enlace por WhatsApp</a>
+    <button class="btn btn-vidrio" id="hOtra">Registrar otra</button>
+  </section>
+
+  <!-- Buscar -->
+  <section id="v-buscar" class="vista">
+    <h2>Buscar entradas</h2>
+    <input type="search" id="bQ" placeholder="DNI, código, celular o nombre" autocomplete="off" oninput="buscarEnVivo()">
+    <p class="nota" id="bEstado">Escribe al menos 3 caracteres.</p>
+    <div class="vidrio panel oculto" id="bPanel" style="margin-top:14px"><ul class="lista" id="bResultados"></ul></div>
+  </section>
+
+  <!-- Listas de concursantes -->
+  <section id="v-listas" class="vista">
+    <h2>Entradas por concursante</h2>
+    <div class="vidrio panel oculto" id="lNuevo">
+      <h3>Nuevo concursante</h3>
+      <p class="nota" style="margin-top:-4px">Se crea con su clave y recibe sus entradas de los códigos de reserva.</p>
+      <label for="nNombre">Nombre completo</label>
+      <input type="text" id="nNombre" autocomplete="off" autocapitalize="words" placeholder="Nombre y apellidos">
+      <div class="dos">
+        <div><label for="nCel">Celular</label><input type="tel" id="nCel" inputmode="numeric" maxlength="9" placeholder="9XX XXX XXX"></div>
+        <div><label for="nCupo">Entradas</label><input type="number" id="nCupo" min="1" max="50" value="20"></div>
+      </div>
+      <button class="btn btn-oro" id="btnNuevo" onclick="nuevoConcursante()">Crear y asignar entradas</button>
+      <div class="error" id="nError"></div>
+    </div>
+    <div class="vidrio panel">
+      <span class="etiqueta" style="margin-top:0">Concursante</span>
+      <div id="lConc"></div>
+    </div>
+    <div id="lSalida" class="oculto">
+      <div class="vidrio panel" id="lAvance"></div>
+      <div class="vidrio panel oculto" id="lAcceso">
+        <h3>Acceso del concursante</h3>
+        <p class="nota" style="margin-top:-4px">Con esta clave ve sus entradas en la app. No puede registrar ni cambiar nada.</p>
+        <div class="codigo" id="lClave"></div>
+        <div class="fila-btn">
+          <a class="btn btn-vidrio" id="lWhatsClave" target="_blank" rel="noopener">Enviar clave por WhatsApp</a>
+          <button class="btn btn-vidrio" onclick="copiar(document.getElementById('lClave').textContent)">Copiar clave</button>
+        </div>
+      </div>
+      <div class="vidrio panel">
+        <h3>Sus entradas</h3>
+        <p class="nota" style="margin-top:-4px">Toca un número para ver o enviar esa entrada.</p>
+        <div class="rejilla" id="lFichas"></div>
+        <div class="fila-btn" style="margin-top:8px">
+          <button class="btn btn-oro" onclick="lote('zip')">Imágenes (ZIP)</button>
+          <button class="btn btn-oro" onclick="lote('pdf')">Todas en PDF</button>
+        </div>
+        <p class="nota" id="lProgreso"></p>
+      </div>
+      <div class="vidrio panel" id="lEnvio">
+        <h3>Enviar por WhatsApp</h3>
+        <textarea id="lTexto" aria-label="Mensaje para el concursante" oninput="enlacesWhatsApp()"></textarea>
+        <div id="lCompartir"></div>
+        <p class="nota" id="lEnvioEstado"></p>
+        <a class="btn btn-vidrio" id="lWhats">Abrir el chat otra vez</a>
+        <p class="nota">Se abre en WhatsApp de escritorio con el saludo escrito. Si no abre, usa <a class="enlace-texto" id="lWhatsWeb" target="_blank" rel="noopener">WhatsApp Web</a>.</p>
+        <p class="nota">La primera vez elige o crea una carpeta (por ejemplo "Entradas Inka" en Documentos). Después se recuerda y cada concursante tiene su propia subcarpeta.</p>
+      </div>
+      <div class="vidrio panel oculto" id="lGenerar">
+        <h3>Reponer entradas perdidas</h3>
+        <p class="nota" style="margin-top:-4px">Primero anula las perdidas desde Buscar. Luego genera las nuevas aquí.</p>
+        <div class="manual"><input id="gCant" type="number" min="1" max="50" value="1" aria-label="Cantidad"><button onclick="generar()">Generar</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mis entradas (concursantes y caja) -->
+  <section id="v-mis" class="vista">
+    <h2 id="misTitulo">Mis entradas</h2>
+    <div class="vidrio panel" id="misAvance"></div>
+    <div class="segmentos" id="misFiltro" role="tablist" aria-label="Filtrar entradas">
+      <button class="sel" data-f="todas" onclick="filtrarMis(this)">Todas</button>
+      <button data-f="libres" onclick="filtrarMis(this)">Libres</button>
+      <button data-f="registradas" onclick="filtrarMis(this)">Registradas</button>
+      <button data-f="ingresaron" onclick="filtrarMis(this)">Ingresaron</button>
+    </div>
+    <div class="vidrio panel" style="margin-top:14px"><ul class="lista" id="misLista"></ul></div>
+    <div class="fila-btn" id="misLote">
+      <button class="btn btn-vidrio" onclick="lote('zip', true)">Imágenes (ZIP)</button>
+      <button class="btn btn-vidrio" onclick="lote('pdf', true)">Todas en PDF</button>
+    </div>
+    <p class="nota" id="misProgreso"></p>
+    <button class="btn btn-vidrio" onclick="cargarMis()">Actualizar</button>
+  </section>
+
+  <!-- Resumen -->
+  <section id="v-respaldo" class="vista">
+    <h2>Lista de respaldo</h2>
+    <p class="nota" style="margin-top:-6px">Descárgala con internet antes de abrir la puerta. Si se cae la señal, busca ahí el código o el DNI y marca la casilla "Visto".</p>
+    <div class="segmentos" id="rpEventos" role="group" aria-label="Evento de la lista" style="margin-top:12px"></div>
+    <div class="fila-btn">
+      <button class="btn btn-oro" onclick="descargarRespaldo()">Descargar PDF</button>
+      <button class="btn btn-vidrio" onclick="prepararRespaldo()">Actualizar</button>
+    </div>
+    <input type="search" id="rpQ" placeholder="Filtrar por código, DNI o nombre" autocomplete="off" oninput="pintarRespaldo()">
+    <p class="nota" id="rpEstado"></p>
+    <div class="vidrio panel tabla-caja">
+      <table class="tabla">
+        <thead><tr><th>Código</th><th>N.º</th><th>Comprador</th><th>Documento</th><th>Vendedor</th><th>Estado</th></tr></thead>
+        <tbody id="rpCuerpo"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-vidrio oculto" id="rpVolver" onclick="abrir('escanear')">Volver al escáner</button>
+  </section>
+
+  <section id="v-resumen" class="vista">
+    <h2>Resumen del evento</h2>
+    <div id="resDatos"></div>
+    <button class="btn btn-vidrio" onclick="verResumen()">Actualizar</button>
+  </section>
+
+  <!-- Sorteo (solo Administración) -->
+  <section id="v-sorteo" class="vista">
+    <h2>Sorteo · <span id="sEvento"></span></h2>
+    <p class="nota" style="margin-top:-6px">Elige al azar una entrada que ya ingresó a este evento. Los ganadores no se repiten.</p>
+    <button class="btn btn-oro" id="btnSortear" onclick="sortear()">Sortear</button>
+    <div id="sResultado"></div>
+  </section>
+
+</main>
+
+<nav class="pestanas vidrio oculto" id="pestanas" aria-label="Secciones"></nav>
+<div class="velo" id="velo" onclick="cerrarHoja()"></div>
+<div class="hoja" id="hoja" role="dialog" aria-modal="true" aria-label="Detalle"><div class="asa"></div><div id="hojaContenido"></div></div>
+<div class="toast vidrio" id="toast" role="status"></div>
+<div class="cargando" id="cargando"></div>
+
+<script src="lib/qrcode.min.js"></script>
+<script src="lib/html5-qrcode.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="beta/app.js?v=1"></script>
+</body>
+</html>
