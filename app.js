@@ -236,7 +236,7 @@ function pintarEstadoBanda() {
   const s = $('bandaEstado');
   const e = evento && sesion && sesion.rol !== 'Puerta' ? estadoEvento(evento) : '';
   s.className = 'banda-estado' + (e === 'terminado' ? ' fin' : e === 'encurso' ? ' vivo' : ' oculto');
-  s.textContent = e === 'terminado' ? 'Este evento ya terminó. Si vendes para otro, toca Cambiar evento.' : e === 'encurso' ? 'En horario ahora' : '';
+  s.textContent = e === 'terminado' ? 'Ya terminó: toca Cambiar evento' : e === 'encurso' ? 'En horario ahora' : '';
 }
 setInterval(() => { if (evento) pintarEstadoBanda(); }, 60000);
 
@@ -1162,7 +1162,7 @@ function pintarRespaldo() {
   if (!rpDatos) { $('rpEstado').textContent = 'No se pudo cargar la lista. Revisa tu conexión.'; return; }
   const filas = filasRespaldo(), max = 300;
   const total = rpDatos.filas.length, ing = rpDatos.filas.filter(f => f[6] === 'Usada').length;
-  $('rpEstado').textContent = `${eventoRespaldo().corto}: ${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${rpDatos.hora.slice(-5)}` +
+  $('rpEstado').textContent = `${eventoRespaldo().corto}: ${total} ${total === 1 ? 'entrada vendida o asignada' : 'entradas vendidas o asignadas'} · ${ing} ya ingresaron · datos de las ${rpDatos.hora.slice(-5)}` +
     (filas.length > max ? ` · se muestran ${max} de ${filas.length}, el PDF trae todas` : '');
   $('rpCuerpo').innerHTML = filas.slice(0, max).map(f => `<tr class="${f[6] === 'Anulada' ? 'anulada' : ''}">
     <td class="mono">${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2]) || '—'}</td><td>${esc(f[3]) || '—'}</td><td>${esc(f[5])}</td><td>${estadoTexto(f[6])}</td></tr>`).join('') ||
