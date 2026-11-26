@@ -128,6 +128,7 @@ textarea { min-height: 150px; font-size: 15px; line-height: 1.5; }
 .segmentos { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--radio); background: var(--superficie-2); border: 1.5px solid var(--linea); }
 .segmentos button { flex: 1 1 auto; min-height: 44px; border: 0; background: transparent; border-radius: 9px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: var(--tinta-2); }
 .segmentos button.sel { background: var(--tinta); color: #fff; }
+[id$="Metodos"].segmentos { display: grid; grid-template-columns: 1fr 1fr; }
 
 /* Interruptor */
 .interruptor { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 0; padding: 14px; border-radius: var(--radio);
@@ -320,7 +321,7 @@ nav.pestanas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; displ
 
 /* ---------- Ingreso ---------- */
 .portada { padding: 3vh 0 18px; }
-.portada svg { width: 44px; height: 44px; color: var(--tinta); }
+.portada svg { display: none; }
 .portada h1 { font-size: 36px; margin: 12px 0 6px; }
 .portada p { margin: 0; color: var(--tinta-2); font-size: 16px; }
 .paso { display: block; font-size: 15px; font-weight: 700; color: var(--tinta); margin: 0 0 10px; }

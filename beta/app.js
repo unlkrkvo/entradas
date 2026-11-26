@@ -375,7 +375,7 @@ function htmlPago(p, conRegalo, conCantidad) {
       <div><label for="${p}Monto">${conCantidad ? 'Precio por entrada (S/)' : 'Precio de venta (S/)'}</label>
         <input type="text" id="${p}Monto" inputmode="decimal" autocomplete="off" placeholder="Escribe el precio" value=""${conCantidad ? ` oninput="totalVenta('${p}')"` : ''}></div>
       <div id="${p}OperBloque" class="oculto"><label for="${p}Oper">Código de operación</label>
-        <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Del comprobante"></div>
+        <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Ej. 4521"></div>
     </div>
     ${conCantidad ? `<p class="total-venta oculto" id="${p}Total" aria-live="polite"></p>` : ''}
     <span class="etiqueta">Método de pago</span>
