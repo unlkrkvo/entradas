@@ -76,15 +76,19 @@ function bajar(blob, nombre) {
 
 async function api(accion, datos = {}, silencioso = false) {
   if (!silencioso) $('cargando').classList.add('si');
+  // Si el servidor no responde en 40 segundos, se avisa en vez de quedarse esperando para siempre
+  const control = new AbortController(), plazo = setTimeout(() => control.abort(), 40000);
   try {
     const cuerpo = Object.assign({ accion, clave: sesion ? sesion.clave : '', evento: evento ? evento.clave : eventoElegido }, datos);
-    const r = await fetch(API, { method: 'POST', body: JSON.stringify(cuerpo) });
+    const r = await fetch(API, { method: 'POST', body: JSON.stringify(cuerpo), signal: control.signal });
     const j = await r.json();
     if (j.sesion === false && sesion && sesion.nombre) { salir(); aviso('Tu clave ya no es válida. Ingresa de nuevo.'); }
     return j;
   } catch (e) {
+    if (e.name === 'AbortError') return { ok: false, error: 'El servidor tardó demasiado en responder. Revisa tu internet e inténtalo otra vez.' };
     return { ok: false, error: 'Sin conexión. Revisa tu internet e inténtalo otra vez.' };
   } finally {
+    clearTimeout(plazo);
     $('cargando').classList.remove('si');
   }
 }
@@ -102,7 +106,7 @@ function mostrar(id) {
 async function abrir(v) {
   cerrarHoja();
   if (v === 'inicio') { pintarInicio(); mostrar('inicio'); }
-  if (v === 'escanear') { mostrar('escanear'); iniciarLector(); }
+  if (v === 'escanear') { mostrar('escanear'); pintarPuerta(); actualizarPuerta(); iniciarLector(); }
   if (v === 'registrar') { await cargarVendedores(); prepararRegistro(); mostrar('registrar'); }
   if (v === 'respaldo') { mostrar('respaldo'); prepararRespaldo(); }
   if (v === 'caja') { prepararCaja(); mostrar('caja'); }
@@ -126,6 +130,10 @@ function pintarInicio() {
   $('saludoRol').textContent = NOMBRE_ROL[sesion.rol] + ' · ' + evento.corto;
   const m = visibles(r.mosaico);
   $('mosaico').innerHTML = m.map((v, i) => `<button class="vidrio${i === 0 && m.length % 2 ? ' ancho' : ''}" onclick="abrir('${v}')">${icono(v)}<div><b>${SECCIONES[v][0]}</b><span>${SECCIONES[v][1]}</span></div></button>`).join('');
+  // Administración ve en el inicio si la hoja quedó en modo ensayo
+  const ensayo = $('inicioEnsayo');
+  ensayo.innerHTML = sesion.rol === 'Administrador' && puertaInfo && (puertaInfo.forzado || puertaInfo.forzadoInvalido) ? htmlEnsayo(puertaInfo) : '';
+  ensayo.classList.toggle('oculto', !ensayo.innerHTML);
   if (sesion.rol === 'Administrador') cifrasInicio();
 }
 async function cifrasInicio() {
@@ -184,6 +192,8 @@ function iniciarSesion(clave, r) {
   sesion = { clave, nombre: r.nombre, rol: r.rol, codigo: r.codigo || '', config: r.config };
   evento = r.evento;
   eventoElegido = '';
+  puertaInfo = r.puerta || null;
+  desfase = r.ahora ? r.ahora - Date.now() : 0;
   plantillas = {};
   try { localStorage.setItem('clave', clave); } catch (e) {}
   $('clave').value = '';
@@ -207,9 +217,57 @@ function pintarBandaEvento() {
   $('bandaDetalle').textContent = evento.fechaTexto + ' · ' + evento.horario;
   b.classList.remove('oculto');
   document.title = evento.corto + ' · Entradas';
+  pintarEstadoBanda();
 }
+// ¿El evento elegido está en horario, ya terminó o todavía no empieza? (hora de Lima, según el servidor)
+let desfase = 0;   // diferencia entre la hora del servidor y la del celular
+function estadoEvento(ev) {
+  if (!ev || !ev.fecha || !ev.inicio || !ev.fin) return '';
+  const hm = h => ('0' + h).slice(-5);
+  const ini = new Date(ev.fecha + 'T' + hm(ev.inicio) + ':00-05:00').getTime();
+  const fin = new Date(ev.fecha + 'T' + hm(ev.fin) + ':00-05:00').getTime();
+  const ahora = Date.now() + desfase;
+  if (ahora > fin) return 'terminado';
+  if (ahora >= ini - (Number(ev.tolerancia) || 0) * 60000) return 'encurso';
+  return 'antes';
+}
+// En la franja: "En horario ahora" o, si ya terminó, el aviso para cambiar de evento (la puerta no lo necesita: decide por la hora)
+function pintarEstadoBanda() {
+  const s = $('bandaEstado');
+  const e = evento && sesion && sesion.rol !== 'Puerta' ? estadoEvento(evento) : '';
+  s.className = 'banda-estado' + (e === 'terminado' ? ' fin' : e === 'encurso' ? ' vivo' : ' oculto');
+  s.textContent = e === 'terminado' ? 'Este evento ya terminó. Si vendes para otro, toca Cambiar evento.' : e === 'encurso' ? 'En horario ahora' : '';
+}
+setInterval(() => { if (evento) pintarEstadoBanda(); }, 60000);
+
+// ---------- Qué acepta la puerta ahora (arriba del escáner) ----------
+let puertaInfo = null;
+function htmlEnsayo(p) {
+  let h = '';
+  if (p.forzado) h += `<div class="ep ensayo"><b>MODO ENSAYO</b><span>Solo pasan entradas de ${esc(p.forzado.corto)}, sin mirar la hora. Antes del evento, borra "Evento activo forzado" en la pestaña Configuración de la hoja.</span></div>`;
+  if (p.forzadoInvalido) h += `<div class="ep ensayo"><span>En Configuración, "Evento activo forzado" dice "${esc(p.forzadoInvalido)}", que no es un evento: se ignora y la puerta usa la hora. Escribe INKA, INDIA o KIDS, o déjalo vacío.</span></div>`;
+  return h;
+}
+function pintarPuerta(p) {
+  if (p) puertaInfo = p;
+  p = puertaInfo;
+  const c = $('estadoPuerta');
+  if (!p) { c.classList.add('oculto'); return; }
+  let h = htmlEnsayo(p);
+  if (!p.forzado) {
+    h += p.activos.length
+      ? p.activos.map(a => `<div class="ep" style="--c:${esc(a.color)}"><i aria-hidden="true"></i><span>Ahora pasan las entradas de <b>${esc(a.corto)}</b>, hasta las ${esc(a.hasta)}.</span></div>`).join('')
+      : `<div class="ep nada"><span>Ahora ningún evento está en horario: toda entrada será rechazada.${p.proximo ? ` Próximo: <b>${esc(p.proximo.corto)}</b>, ${esc(p.proximo.fechaTexto)}, desde las ${esc(p.proximo.abre)}.` : ''}</span></div>`;
+  }
+  c.innerHTML = h;
+  c.classList.remove('oculto');
+}
+async function actualizarPuerta() { const r = await api('puerta', {}, true); if (r.ok) pintarPuerta(r.puerta); }
+setInterval(() => { if (sesion && vistaActual === 'escanear') actualizarPuerta(); }, 300000);
+
 function cerrarSesionLocal() {
   listaCache = null; vendedores = []; vendedoresHora = 0; misDatos = null; listaActual = null; envio = null;
+  puertaInfo = null; rpEvento = ''; rpDatos = null; ventaActual = null;
   detenerLector();
   cerrarHoja();
   sesion = null;
@@ -296,17 +354,35 @@ function htmlComprador(p) {
     ${apo ? '' : '<p class="nota">Para menores de edad, usa el DNI del adulto que lo acompaña.</p>'}`;
 }
 // Precio: una sola casilla obligatoria, vacía al empezar. Se escribe el precio al que se vendió.
-function htmlPago(p, conRegalo) {
+// Con cantidad (caja y ventas de la organización): de 1 a 10 entradas con los mismos datos; el precio es por entrada.
+function htmlPago(p, conRegalo, conCantidad) {
   const metodos = ['Efectivo', 'Yape', 'Plin', 'Transferencia'].concat(conRegalo ? ['Regalo'] : []);
   return `
+    ${conCantidad ? `<span class="etiqueta" style="margin-top:0">Cantidad de entradas</span>
+    <div class="contador"><button type="button" onclick="cambiarCantidad('${p}', -1)" aria-label="Una entrada menos">−</button><output id="${p}Cant" aria-live="polite">1</output><button type="button" onclick="cambiarCantidad('${p}', 1)" aria-label="Una entrada más">+</button></div>` : ''}
     <div class="dos">
-      <div><label for="${p}Monto">Precio de venta (S/)</label>
-        <input type="text" id="${p}Monto" inputmode="decimal" autocomplete="off" placeholder="Escribe el precio" value=""></div>
+      <div><label for="${p}Monto">${conCantidad ? 'Precio por entrada (S/)' : 'Precio de venta (S/)'}</label>
+        <input type="text" id="${p}Monto" inputmode="decimal" autocomplete="off" placeholder="Escribe el precio" value=""${conCantidad ? ` oninput="totalVenta('${p}')"` : ''}></div>
       <div id="${p}OperBloque" class="oculto"><label for="${p}Oper">Código de operación</label>
         <input type="text" id="${p}Oper" inputmode="numeric" autocomplete="off" placeholder="Del comprobante"></div>
     </div>
+    ${conCantidad ? `<p class="total-venta oculto" id="${p}Total" aria-live="polite"></p>` : ''}
     <span class="etiqueta">Método de pago</span>
     <div class="segmentos" id="${p}Metodos">${metodos.map(m => `<button type="button" data-m="${m}" onclick="elegirMetodo('${p}', this)">${m}</button>`).join('')}</div>`;
+}
+const redondear = x => Math.round(x * 100) / 100;
+function cambiarCantidad(p, paso) {
+  const o = $(p + 'Cant');
+  o.textContent = Math.min(10, Math.max(1, (Number(o.textContent) || 1) + paso));
+  totalVenta(p);
+}
+// Con 2 o más entradas muestra el total a cobrar
+function totalVenta(p) {
+  const t = $(p + 'Total');
+  if (!t) return;
+  const n = Number($(p + 'Cant').textContent) || 1, m = $(p + 'Monto').value;
+  t.textContent = n < 2 ? '' : precioValido(m) ? `Total a cobrar: S/ ${redondear(n * Number(String(m).trim().replace(',', '.')))} por ${n} entradas` : `${n} entradas: escribe el precio de cada una`;
+  t.classList.toggle('oculto', n < 2);
 }
 function elegirMetodo(p, b) {
   document.querySelectorAll('#' + p + 'Metodos button').forEach(x => x.classList.remove('sel'));
@@ -327,7 +403,8 @@ function leerComprador(p) {
   return { nombre: $(p + 'Nombre').value, tipoDoc: $(p + 'TipoDoc').value, doc: $(p + 'Doc').value, celular: $(p + 'Cel').value };
 }
 function leerPago(p) {
-  return { metodo: $(p + 'Metodos').dataset.valor || '', operacion: $(p + 'Oper').value, monto: $(p + 'Monto').value };
+  const cant = $(p + 'Cant');
+  return { metodo: $(p + 'Metodos').dataset.valor || '', operacion: $(p + 'Oper').value, monto: $(p + 'Monto').value, cantidad: cant ? Number(cant.textContent) || 1 : 1 };
 }
 function validarLocal(d) {
   if ((d.nombre || '').trim().length < 3) return 'Escribe el nombre completo';
@@ -357,10 +434,10 @@ async function cargarLista(forzar) {
 }
 const normId = t => String(t || '').toUpperCase().replace(/0/g, 'O').replace(/1/g, 'I');
 const aEntrada = f => ({ id: f[0], nLista: f[1], comprador: f[2], doc: f[3], celular: f[4], vendedor: f[5], estado: f[6], horaIngreso: f[7] });
-function filtrarLista(q) {
-  if (!listaCache) return [];
+function filtrarLista(q, fuente = listaCache) {
+  if (!fuente) return [];
   const t = normal(q), d = q.toUpperCase().replace(/\s+/g, ''), k = normId(d);
-  return listaCache.filas.filter(f => normId(f[0]).includes(k) || (d.length >= 4 && (f[3].toUpperCase().includes(d) || f[4].includes(d))) || normal(f[2]).includes(t));
+  return fuente.filas.filter(f => normId(f[0]).includes(k) || (d.length >= 4 && (f[3].toUpperCase().includes(d) || f[4].includes(d))) || normal(f[2]).includes(t));
 }
 function prepararRegistro() {
   registro = { vendedor: null, qrs: [], id: '' };
@@ -383,7 +460,7 @@ async function elegirVendedor(v) {
   $('bloqueComprador').innerHTML = htmlComprador('r');
   $('bloquePago').innerHTML = esConc
     ? '<p class="nota" style="margin-top:-4px">Lo que pagó el comprador al concursante. Si fue un regalo, elige Regalo.</p>' + htmlPago('r', true)
-    : htmlPago('r', false);
+    : htmlPago('r', false, true);
   $('rDatos').classList.remove('oculto');
   $('bloqueQR').classList.toggle('oculto', !esConc);
   if (esConc) {
@@ -424,13 +501,15 @@ async function registrar() {
   const r = await api('registrar', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'), r.numero);
+  const n = r.cantidad || 1, total = redondear(n * Number(String(d.monto).trim().replace(',', '.')));
+  hecho(r.id, d.nombre, d.celular, esConc ? `Entrada N° ${r.numero} de ${v.nombre}`
+    : n > 1 ? `Venta de ${v.nombre} · ${n} entradas · S/ ${total} en total` : `Venta de ${v.nombre} · S/ ${d.monto}`, () => abrir('registrar'), r.numero, r.entradas);
 }
 
 // ---------- Caja ----------
 function prepararCaja() {
   $('bloqueCompradorCaja').innerHTML = htmlComprador('c');
-  $('bloquePagoCaja').innerHTML = htmlPago('c', false);
+  $('bloquePagoCaja').innerHTML = htmlPago('c', false, true);
   $('btnCaja').textContent = 'Cobrar y registrar';
   $('cError').textContent = '';
   $('cIngresa').checked = true;
@@ -446,22 +525,61 @@ async function venderCaja() {
   const r = await api('venderPuerta', d);
   btn.disabled = false;
   if (!r.ok) { err.textContent = r.error; return; }
-  hecho(r.id, d.nombre, d.celular, `Cobrado S/ ${r.monto} con ${d.metodo}. ` + (r.ingreso ? 'Ya puede pasar: ponle el sello.' : 'Debe pasar por el escáner.'), () => abrir('caja'), r.numero);
+  const n = r.cantidad || 1, varias = n > 1;
+  const cobro = varias ? `Cobrado S/ ${r.total} por ${n} entradas con ${d.metodo}. ` : `Cobrado S/ ${r.monto} con ${d.metodo}. `;
+  hecho(r.id, d.nombre, d.celular, cobro + (r.ingreso ? (varias ? 'Ya pueden pasar: ponles el sello.' : 'Ya puede pasar: ponle el sello.') : (varias ? 'Deben pasar por el escáner.' : 'Debe pasar por el escáner.')), () => abrir('caja'), r.numero, r.entradas);
 }
 
 // ---------- Venta completada ----------
-function hecho(id, nombre, cel, texto, otra, n) {
+let ventaActual = null;   // entradas de la última venta: { entradas: [{id, numero}], nombre }
+// Mensaje al comprador: el texto de la pestaña Eventos, con su nombre y el enlace de cada entrada
+function mensajeComprador(nombre, links) {
+  const n = links.length;
+  let saludo = (evento.msgComprador || 'Hola [nombre], esta es tu entrada para ' + evento.nombre + ':')
+    .replace(/\[nombre\]/gi, nombre.trim().split(' ')[0]).replace(/\[cantidad\]/gi, n);
+  if (n === 1) return `${saludo}\n${links[0]}\nMuéstrala en la puerta. Cada QR sirve para un solo ingreso.`;
+  saludo = saludo.replace(/esta es tu entrada/i, `estas son tus ${n} entradas`).replace(/está tu entrada/i, `están tus ${n} entradas`).replace(/tu entrada/i, `tus ${n} entradas`);
+  return `${saludo}\n${links.map((l, i) => `${i + 1}) ${l}`).join('\n')}\nUna entrada por persona. Muéstralas en la puerta: cada QR sirve para un solo ingreso.`;
+}
+function hecho(id, nombre, cel, texto, otra, n, entradas) {
+  const lista = entradas && entradas.length ? entradas : [{ id, numero: n }];
+  cel = String(cel || '').replace(/\D/g, '');
+  ventaActual = { entradas: lista, nombre };
+  $('hTitulo').textContent = lista.length > 1 ? lista.length + ' entradas registradas' : 'Entrada registrada';
   $('hTexto').textContent = texto;
   $('hCodigo').textContent = id;
   $('hDiseno').innerHTML = '<div class="esperando">Preparando la entrada...</div>';
-  const link = APP_URL + '?t=' + id;
-  // Mensaje al comprador: el texto de la pestaña Eventos, con su nombre y el enlace de su entrada
-  const saludo = (evento.msgComprador || 'Hola [nombre], esta es tu entrada para ' + evento.nombre + ':').replace(/\[nombre\]/gi, nombre.split(' ')[0]);
-  const msg = `${saludo}\n${link}\nMuéstrala en la puerta. Cada QR sirve para un solo ingreso.`;
+  // Con varias entradas: la lista de todas, cada una con su botón para verla
+  $('hLista').innerHTML = lista.length > 1 ? lista.map(x => `<li><div class="item-cab"><div><b>Entrada N° ${esc(x.numero)}</b><small class="mono">${esc(x.id)}</small></div>
+    <div class="item-acciones" style="margin:0"><button onclick="verEntradaEnHoja('${jsArg(x.id)}','Entrada N° ${jsArg(x.numero)}','${jsArg(cel)}','${jsArg(nombre)}','${jsArg(x.numero)}')">Ver</button></div></div></li>`).join('') : '';
+  $('hPanelLista').classList.toggle('oculto', lista.length < 2);
+  $('hCompartir').lastChild.textContent = lista.length > 1 ? 'Enviar las ' + lista.length + ' imágenes por WhatsApp' : 'Enviar imagen por WhatsApp';
+  const msg = mensajeComprador(nombre, lista.map(x => APP_URL + '?t=' + x.id));
   $('hWhats').href = 'https://wa.me/51' + cel.replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
+  $('hWhats').textContent = lista.length > 1 ? 'Enviar los ' + lista.length + ' enlaces por WhatsApp' : 'Enviar el enlace por WhatsApp';
   $('hOtra').onclick = otra;
   mostrar('hecho');
   mostrarDiseno('hDiseno', id, n);
+}
+// Comparte la imagen de la entrada o, si la venta fue de varias, todas juntas
+async function compartirVenta() {
+  const v = ventaActual;
+  if (!v || v.entradas.length < 2) return compartirEntrada();
+  aviso('Preparando ' + v.entradas.length + ' imágenes...', 5000);
+  try {
+    const archivos = [];
+    for (const x of v.entradas) {
+      const cv = await crearEntrada(x.id, x.numero);
+      const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.9));
+      archivos.push(new File([blob], 'Entrada_' + String(x.numero).padStart(2, '0') + '_' + x.id + '.jpg', { type: 'image/jpeg' }));
+    }
+    if (navigator.canShare && navigator.canShare({ files: archivos })) {
+      try { await navigator.share({ files: archivos, title: 'Entradas' }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    archivos.forEach((f, i) => setTimeout(() => bajar(f, f.name), i * 400));
+  } catch (e) {
+    aviso('No se pudieron preparar las imágenes: ' + e.message, 5000);
+  }
 }
 
 // ---------- Escáner ----------
@@ -506,6 +624,7 @@ function validarManual() {
 async function validar(codigo) {
   abrirHoja('aviso', `<div class="veredicto"><div class="sello">${icono('escanear')}</div><div><h2>Validando</h2><p>${esc(codigo)}</p></div></div>`);
   const r = await api('escanear', { id: codigo }, true);
+  if (r.puerta) pintarPuerta(r.puerta);
   const filas = pares => '<div class="datos">' + pares.filter(p => p[1]).map(p => `<div class="dato"><span>${esc(p[0])}</span><b>${esc(p[1])}</b></div>`).join('') + '</div>';
   const siguiente = '<button class="btn btn-vidrio" onclick="siguienteEscaneo()">Escanear siguiente</button>';
   if (!r.ok) {
@@ -524,13 +643,13 @@ async function validar(codigo) {
     abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>No es de este horario</h2><p>${esc(r.mensaje)}</p></div></div>${evGrande}${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.85)">Una entrada solo sirve para su evento. No la dejes pasar.</p>${siguiente}`);
     sonido(false);
   } else if (r.resultado === 'Ya usado') {
-    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Ya fue usada</h2><p>Ingresó ${esc(r.horaIngreso)} · escaneó ${esc(r.escaneadoPor)}</p></div></div>${evGrande}${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.8)">Si tiene sello, es un reingreso. Si no, llama al supervisor.</p>${siguiente}`);
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Ya fue usada</h2><p>Ingresó ${r.hace ? '<b>' + esc(r.hace) + '</b> (' + esc(r.horaIngreso) + ')' : esc(r.horaIngreso)} · escaneó ${esc(r.escaneadoPor)}</p></div></div>${evGrande}${filas(comunes)}<p class="nota" style="color:rgba(255,255,255,.8)">Si tiene sello, es un reingreso. Si no, llama al supervisor.</p>${siguiente}`);
     sonido(false);
   } else if (r.resultado === 'Anulado') {
     abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('no', 'stroke-width="2.6"')}</div><div><h2>Entrada anulada</h2><p>Deriva al supervisor.</p></div></div>${evGrande}${filas(comunes.concat([['Motivo', r.obs]]))}${siguiente}`);
     sonido(false);
   } else {
-    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('alerta')}</div><div><h2>No existe</h2><p>Este código no está registrado o no tiene comprador asignado. Deriva a caja o al supervisor.</p></div></div>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}${siguiente}`);
+    abrirHoja('mal', `<div class="veredicto"><div class="sello">${icono('alerta')}</div><div><h2>No existe</h2><p>${r.reserva ? 'Este código todavía no fue vendido a nadie.' : 'Este código no está registrado.'} Deriva a caja o al supervisor.</p></div></div>${filas([['Leído', r.id], ['Escaneada', r.horaEscaneo]])}${siguiente}`);
     sonido(false);
   }
 }
@@ -1005,41 +1124,64 @@ async function lote(tipo, propias) {
 }
 
 // ---------- Lista de respaldo (por si cae el internet en la puerta) ----------
+// Se puede bajar la lista de cualquier evento (la puerta del sábado necesita la de Kids y la de India)
+let rpEvento = '', rpDatos = null;
+const eventosConocidos = () => eventosLista.length ? eventosLista : EVENTOS_RESPALDO;
+const eventoRespaldo = () => eventosConocidos().find(e => e.clave === rpEvento) || evento;
 async function prepararRespaldo() {
   $('rpVolver').classList.toggle('oculto', sesion.rol !== 'Puerta');
+  if (!rpEvento) rpEvento = evento.clave;
+  pintarRpEventos();
+  await cargarRespaldo();
+}
+function pintarRpEventos() {
+  $('rpEventos').innerHTML = eventosConocidos().map(e => `<button type="button" class="${e.clave === rpEvento ? 'sel' : ''}" aria-pressed="${e.clave === rpEvento}" onclick="elegirRpEvento('${jsArg(e.clave)}')">${esc(e.corto)}</button>`).join('');
+}
+async function elegirRpEvento(clave) { rpEvento = clave; pintarRpEventos(); await cargarRespaldo(); }
+async function cargarRespaldo() {
+  const pedido = rpEvento;
+  rpDatos = null;
   $('rpEstado').textContent = 'Cargando entradas...';
-  await cargarLista(true);
+  $('rpCuerpo').innerHTML = '';
+  let datos = null;
+  if (pedido === evento.clave) datos = await cargarLista(true);
+  else {
+    const r = await api('lista', { evento: pedido }, true);
+    if (r.ok) datos = { filas: r.filas, hora: r.hora }; else aviso(r.error);
+  }
+  if (pedido !== rpEvento) return;   // se tocó otro evento mientras cargaba
+  rpDatos = datos;
   pintarRespaldo();
 }
 function filasRespaldo() {
   const q = $('rpQ').value.trim();
-  const filas = q.length >= 2 ? filtrarLista(q) : (listaCache ? listaCache.filas.slice() : []);
+  const filas = q.length >= 2 ? filtrarLista(q, rpDatos) : (rpDatos ? rpDatos.filas.slice() : []);
   return filas.sort((a, b) => a[0].localeCompare(b[0]));
 }
 function pintarRespaldo() {
-  if (!listaCache) { $('rpEstado').textContent = 'No se pudo cargar la lista. Revisa tu conexión.'; return; }
+  if (!rpDatos) { $('rpEstado').textContent = 'No se pudo cargar la lista. Revisa tu conexión.'; return; }
   const filas = filasRespaldo(), max = 300;
-  const total = listaCache.filas.length, ing = listaCache.filas.filter(f => f[6] === 'Usada').length;
-  $('rpEstado').textContent = `${evento.corto}: ${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${listaCache.hora.slice(-5)}` +
+  const total = rpDatos.filas.length, ing = rpDatos.filas.filter(f => f[6] === 'Usada').length;
+  $('rpEstado').textContent = `${eventoRespaldo().corto}: ${total} entradas vendidas o asignadas · ${ing} ya ingresaron · datos de las ${rpDatos.hora.slice(-5)}` +
     (filas.length > max ? ` · se muestran ${max} de ${filas.length}, el PDF trae todas` : '');
   $('rpCuerpo').innerHTML = filas.slice(0, max).map(f => `<tr class="${f[6] === 'Anulada' ? 'anulada' : ''}">
     <td class="mono">${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2]) || '—'}</td><td>${esc(f[3]) || '—'}</td><td>${esc(f[5])}</td><td>${estadoTexto(f[6])}</td></tr>`).join('') ||
     '<tr><td colspan="6">Sin entradas para mostrar.</td></tr>';
 }
 function descargarRespaldo() {
-  if (!listaCache) return;
-  const filas = filasRespaldo();
+  if (!rpDatos) return;
+  const filas = filasRespaldo(), datos = rpDatos, evRp = eventoRespaldo();
   const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const cols = [['Código', 32], ['N.º', 12], ['Comprador', 78], ['Documento', 28], ['Vendedor', 62], ['Estado', 30], ['Visto', 15]];
   const x0 = 12, alto = 6.4, porPag = 27, paginas = Math.max(1, Math.ceil(filas.length / porPag));
-  const nombreEv = evento.nombre;
+  const nombreEv = evRp.nombre || evRp.corto;
   const corta =(t, w) => { t = String(t || ''); while (t && pdf.getTextWidth(t) > w - 3) t = t.slice(0, -1); return t; };
   for (let p = 0; p < paginas; p++) {
     if (p) pdf.addPage();
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
     pdf.text('Lista de respaldo · ' + nombreEv, x0, 13);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
-    pdf.text(`Generada ${listaCache.hora} · ${filas.length} entradas · ordenadas por código · página ${p + 1} de ${paginas}`, x0, 18.5);
+    pdf.text(`${evRp.fechaTexto ? evRp.fechaTexto + ', ' + evRp.horario + ' · ' : ''}Generada ${datos.hora} · ${filas.length} entradas · ordenadas por código · página ${p + 1} de ${paginas}`, x0, 18.5);
     let y = 25, x = x0;
     pdf.setFillColor(36, 24, 46); pdf.rect(x0, y - 4.6, 257, alto, 'F');
     pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
@@ -1053,7 +1195,7 @@ function descargarRespaldo() {
       cols.forEach((c, k) => { if (k === 6) pdf.rect(x + 5, y - 3.4, 4, 4); else pdf.text(corta(v[k], c[1]), x + 1.5, y); x += c[1]; });
     });
   }
-  pdf.save('Lista_respaldo_' + evento.clave + '_' + listaCache.hora.replace(/[\/: ]/g, '-') + '.pdf');
+  pdf.save('Lista_respaldo_' + evRp.clave + '_' + datos.hora.replace(/[\/: ]/g, '-') + '.pdf');
 }
 
 // ---------- Entrada pública ----------

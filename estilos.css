@@ -308,3 +308,21 @@ a.enlace-texto { color: var(--oro-claro); text-decoration: underline; }
 .ticket-evento span { display: block; font-size: 13px; color: var(--marfil-suave); }
 .ganador { margin-top: 14px; text-align: center; }
 .ganador-num { font-family: var(--display); font-size: 44px; color: var(--oro-claro); line-height: 1.1; margin-top: 6px; }
+
+/* ---------- Mejoras: estado del evento, puerta, cantidad ---------- */
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .06em; }
+.banda-estado { display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.banda-estado.vivo { background: rgba(63, 211, 155, .22); color: #BFF5DE; }
+.banda-estado.fin { background: #B3261E; color: #fff; white-space: normal; }
+.estado-puerta { display: grid; gap: 8px; margin: 0 0 14px; }
+.estado-puerta .ep { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 15px; line-height: 1.35;
+  background: color-mix(in srgb, var(--c, #E2B657) 26%, rgba(10, 6, 14, .55)); border: 1px solid color-mix(in srgb, var(--c, #E2B657) 70%, transparent); }
+.estado-puerta .ep i { width: 14px; height: 14px; border-radius: 50%; background: var(--c); flex: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, .2); }
+.estado-puerta .ep b { color: #fff; }
+.estado-puerta .ep.nada { --c: #8A8A8A; }
+.estado-puerta .ep.ensayo { --c: #E0476F; display: block; background: #8E1B33; border-color: #FF9AB3; color: #fff; }
+.estado-puerta .ep.ensayo b { display: block; font-size: 17px; letter-spacing: .06em; margin-bottom: 2px; }
+.contador { display: flex; align-items: center; gap: 12px; }
+.contador button { width: 52px; height: 52px; flex: none; border-radius: 16px; border: 1px solid var(--borde-vidrio); background: rgba(255, 248, 235, .1); font-size: 26px; font-weight: 700; line-height: 1; }
+.contador output { min-width: 48px; text-align: center; font-family: var(--display); font-size: 30px; color: var(--oro-claro); }
+.total-venta { margin: 12px 2px 0; padding: 10px 14px; border-radius: 14px; background: rgba(226, 182, 87, .16); color: var(--oro-claro); font-weight: 700; font-size: 16px; }

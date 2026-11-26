@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=6">
+<link rel="stylesheet" href="estilos.css?v=7">
 </head>
 <body>
 <div class="fondo" aria-hidden="true"><div class="patron"></div></div>
@@ -32,7 +32,7 @@
   </div>
   <div class="banda-evento oculto" id="bandaEvento" role="status">
     <i aria-hidden="true"></i>
-    <div><b id="bandaNombre"></b><small id="bandaDetalle"></small></div>
+    <div><b id="bandaNombre"></b><small id="bandaDetalle"></small><span id="bandaEstado" class="banda-estado oculto"></span></div>
     <button type="button" onclick="cambiarEvento()">Cambiar evento</button>
   </div>
 </header>
@@ -85,6 +85,7 @@
   <section id="v-inicio" class="vista">
     <h1 id="saludo"></h1>
     <p class="sub" id="saludoRol"></p>
+    <div class="estado-puerta oculto" id="inicioEnsayo" role="status"></div>
     <div class="cifras oculto" id="cifrasInicio"></div>
     <div class="mosaico" id="mosaico"></div>
   </section>
@@ -92,6 +93,7 @@
   <!-- Escanear -->
   <section id="v-escanear" class="vista">
     <h2>Escanear entradas</h2>
+    <div class="estado-puerta oculto" id="estadoPuerta" role="status"></div>
     <div class="visor">
       <div id="lector"></div>
       <div class="esquinas" aria-hidden="true"></div>
@@ -136,7 +138,7 @@
       <div id="bloqueCompradorCaja"></div>
       <h3 style="margin-top:22px">Pago</h3>
       <div id="bloquePagoCaja"></div>
-      <label class="interruptor"><span>Entra ahora mismo<small>La entrada queda usada y pasa directo con su sello</small></span><input type="checkbox" id="cIngresa" checked></label>
+      <label class="interruptor"><span>Entra ahora mismo<small>La entrada queda usada y pasa directo con su sello (si son varias, todas)</small></span><input type="checkbox" id="cIngresa" checked></label>
       <button class="btn btn-oro" id="btnCaja" onclick="venderCaja()">Cobrar y registrar</button>
       <div class="error" id="cError"></div>
     </div>
@@ -144,10 +146,11 @@
 
   <!-- Venta completada -->
   <section id="v-hecho" class="vista">
-    <div class="veredicto"><div class="sello" style="background:rgba(63,211,155,.22)"><svg viewBox="0 0 24 24" fill="none" stroke="#3FD39B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 style="color:var(--marfil)">Entrada registrada</h2><p id="hTexto"></p></div></div>
+    <div class="veredicto"><div class="sello" style="background:rgba(63,211,155,.22)"><svg viewBox="0 0 24 24" fill="none" stroke="#3FD39B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><h2 style="color:var(--marfil)" id="hTitulo">Entrada registrada</h2><p id="hTexto"></p></div></div>
     <div id="hDiseno" class="disenio"></div>
     <div class="codigo" id="hCodigo"></div>
-    <button class="btn btn-oro" onclick="compartirEntrada()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Enviar imagen por WhatsApp</button>
+    <div class="vidrio panel oculto" id="hPanelLista" style="margin-top:14px"><ul class="lista" id="hLista"></ul></div>
+    <button class="btn btn-oro" id="hCompartir" onclick="compartirVenta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Enviar imagen por WhatsApp</button>
     <div class="fila-btn">
       <button class="btn btn-vidrio" onclick="descargarPNG()">Imagen PNG</button>
       <button class="btn btn-vidrio" onclick="descargarPDF()">Archivo PDF</button>
@@ -244,6 +247,7 @@
   <section id="v-respaldo" class="vista">
     <h2>Lista de respaldo</h2>
     <p class="nota" style="margin-top:-6px">Descárgala con internet antes de abrir la puerta. Si se cae la señal, busca ahí el código o el DNI y marca la casilla "Visto".</p>
+    <div class="segmentos" id="rpEventos" role="group" aria-label="Evento de la lista" style="margin-top:12px"></div>
     <div class="fila-btn">
       <button class="btn btn-oro" onclick="descargarRespaldo()">Descargar PDF</button>
       <button class="btn btn-vidrio" onclick="prepararRespaldo()">Actualizar</button>
@@ -285,6 +289,6 @@
 <script src="lib/html5-qrcode.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jszip.min.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
